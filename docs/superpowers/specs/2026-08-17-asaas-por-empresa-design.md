@@ -132,15 +132,26 @@ guard de `config_multas`).
 - `ativo` não tem toggle na UI nesta primeira versão — todo upsert grava
   `ativo=TRUE`. A coluna existe pra permitir desativar via banco (ou uma tela
   futura) sem apagar a configuração, mesmo padrão de `config_multas.ativo`.
-- Link "Configurações" no menu (`base.html`), visível só pra quem tem o role
-  (mesmo padrão condicional já usado pra outros itens do menu restritos por role).
+- Link "Configurações" no menu (`base.html`), sempre visível — mesmo padrão dos
+  outros itens do menu (ex: "Usuários"), que não escondem por role no template;
+  quem não tem o role é barrado pelo `@requer_role` na própria rota.
 
-### Refatoração dos 8 arquivos que usam `Config.ASAAS_API_KEY` hoje
+### Refatoração dos arquivos que usam `Config.ASAAS_API_KEY`/`ASAAS_BASE_URL` hoje
 
-`routes/clientes_routes.py`, `routes/checklists_routes.py`,
-`routes/locacoes_routes.py`, `routes/catalogo_routes.py`,
-`routes/orcamentos_routes.py`, `sync_clientes_asaas.py`, `routes/webhook_routes.py`,
-`config.py` (mantém as vars globais como fallback, não muda).
+Levantamento preciso (grep por `Config.ASAAS_`, não só menções a "Asaas"): só três
+arquivos chamam a API da Asaas de fato com a config global —
+`routes/clientes_routes.py` (2 chamadas), `routes/locacoes_routes.py` (4 chamadas),
+`routes/webhook_routes.py` (`_authorized()`). `config.py` mantém as vars globais
+como fallback, não muda.
+
+`checklists_routes.py`, `catalogo_routes.py` e `orcamentos_routes.py` só mencionam
+"Asaas" em comentário ou leem a coluna `asaas_id`/`asaas_subscription_id` do banco
+— não chamam a API, não precisam mudar.
+
+`sync_clientes_asaas.py` é um script standalone (roda manual via linha de comando,
+nunca é importado por nenhuma rota, lê `os.environ` direto em vez de `Config`) —
+fica fora do escopo desta mudança. Se um dia precisar rodar por empresa, isso é
+uma tarefa separada (ex: aceitar `--company-id` como argumento).
 
 Cada chamada que hoje faz:
 
