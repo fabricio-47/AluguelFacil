@@ -9,6 +9,7 @@ from werkzeug.utils import secure_filename
 from database import get_db_connection
 from config import Config
 from permissions import requer_permissao, tem_permissao, VER_CLIENTES, GERENCIAR_CLIENTES
+from asaas_config import obter_config_asaas
 
 clientes_bp = Blueprint("clientes", __name__, url_prefix="/clientes")
 
@@ -90,14 +91,15 @@ def listar_clientes():
                 return redirect(url_for("clientes.listar_clientes"))
 
             # Busca cliente no Asaas pelo CPF (document) ou email
-            headers = {"access_token": Config.ASAAS_API_KEY}
+            asaas = obter_config_asaas(cur, current_user.company_id)
+            headers = {"access_token": asaas["api_key"]}
             params = {}
             if cpf:
                 params["cpfCnpj"] = cpf
             else:
                 params["email"] = email
 
-            resp = requests.get(f"{Config.ASAAS_BASE_URL}/customers", headers=headers, params=params, timeout=30)
+            resp = requests.get(f"{asaas['base_url']}/customers", headers=headers, params=params, timeout=30)
             if resp.status_code != 200:
                 flash(f"Erro ao consultar Asaas: {resp.status_code}", "danger")
                 return redirect(url_for("clientes.listar_clientes"))
@@ -120,7 +122,7 @@ def listar_clientes():
                     "address": endereco,
                     "notificationDisabled": False,
                 }
-                resp_create = requests.post(f"{Config.ASAAS_BASE_URL}/customers", headers=headers, json=cliente_payload, timeout=30)
+                resp_create = requests.post(f"{asaas['base_url']}/customers", headers=headers, json=cliente_payload, timeout=30)
                 if resp_create.status_code not in (200, 201):
                     flash(f"Erro ao criar cliente no Asaas: {resp_create.status_code}", "danger")
                     return redirect(url_for("clientes.listar_clientes"))
