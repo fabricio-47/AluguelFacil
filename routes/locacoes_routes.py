@@ -15,6 +15,7 @@ from contrato import gerar_contrato_pdf
 from multas import calcular_multa
 from estoque import registrar_movimentacao
 from assinaturas_core import salvar_assinatura, buscar_assinatura_recente
+from asaas_config import obter_config_asaas
 from relatorios import STATUS_RECEBIDO
 
 locacoes_bp = Blueprint("locacoes", __name__, url_prefix="/locacoes")
@@ -258,10 +259,11 @@ def criar_locacao_interna(cur, cliente, equipamento, cliente_id, equipamento_id,
     if data_fim:
         subscription_data["endDate"] = data_fim.strftime("%Y-%m-%d")
 
+    asaas = obter_config_asaas(cur, current_user.company_id)
     try:
         resp = requests.post(
-            f"{Config.ASAAS_BASE_URL}/subscriptions",
-            headers={"access_token": Config.ASAAS_API_KEY},
+            f"{asaas['base_url']}/subscriptions",
+            headers={"access_token": asaas["api_key"]},
             json=subscription_data,
             timeout=30,
         )
@@ -371,16 +373,17 @@ def editar_locacao(id):
                 if data_fim:
                     patch_data["endDate"] = data_fim
 
+                asaas = obter_config_asaas(cur, current_user.company_id)
                 resp = requests.post(
-                    f"{Config.ASAAS_BASE_URL}/subscriptions/{asaas_subscription_id}",
-                    headers={"access_token": Config.ASAAS_API_KEY},
+                    f"{asaas['base_url']}/subscriptions/{asaas_subscription_id}",
+                    headers={"access_token": asaas["api_key"]},
                     json=patch_data,
                     timeout=30
                 )
                 if resp.status_code not in (200, 201):
                     resp = requests.put(
-                        f"{Config.ASAAS_BASE_URL}/subscriptions/{asaas_subscription_id}",
-                        headers={"access_token": Config.ASAAS_API_KEY},
+                        f"{asaas['base_url']}/subscriptions/{asaas_subscription_id}",
+                        headers={"access_token": asaas["api_key"]},
                         json=patch_data,
                         timeout=30
                     )
@@ -478,9 +481,10 @@ def canceladas():
 def executar_cancelamento_locacao(cur, locacao_id, equipamento_id, asaas_subscription_id):
     """Cancela a assinatura no Asaas (se existir) e libera o equipamento. Não faz commit — quem chama controla a transação."""
     if asaas_subscription_id:
+        asaas = obter_config_asaas(cur, current_user.company_id)
         resp = requests.post(
-            f"{Config.ASAAS_BASE_URL}/subscriptions/{asaas_subscription_id}/cancel",
-            headers={"access_token": Config.ASAAS_API_KEY},
+            f"{asaas['base_url']}/subscriptions/{asaas_subscription_id}/cancel",
+            headers={"access_token": asaas["api_key"]},
             timeout=30
         )
         if resp.status_code not in (200, 201):
@@ -559,8 +563,9 @@ def sincronizar_boletos_manual(id):
             return redirect(url_for("locacoes.editar_locacao", id=id))
 
         sub_id = row[0]
-        url = f"{Config.ASAAS_BASE_URL}/payments?subscription={sub_id}&limit=100"
-        resp = requests.get(url, headers={"access_token": Config.ASAAS_API_KEY}, timeout=30)
+        asaas = obter_config_asaas(cur, current_user.company_id)
+        url = f"{asaas['base_url']}/payments?subscription={sub_id}&limit=100"
+        resp = requests.get(url, headers={"access_token": asaas["api_key"]}, timeout=30)
         if resp.status_code not in (200, 201):
             flash(f"Erro ao consultar boletos no Asaas: {resp.text}", "danger")
             return redirect(url_for("locacoes.editar_locacao", id=id))
