@@ -130,6 +130,7 @@ document.querySelector("#btn-cadastrar-locacao").closest("form").addEventListene
             <th>Fim</th>
             <th>Frequência</th>
             <th>Contrato</th>
+            <th>Recibo</th>
             <th>Boleto</th>
             <th>Status</th>
             <th>Valor Pago</th>
@@ -164,6 +165,15 @@ document.querySelector("#btn-cadastrar-locacao").closest("form").addEventListene
                  target="_blank" title="Ver Contrato">
                 <i class="fa-solid fa-file-pdf"></i>
               </a>
+            </td>
+            <td>
+              {% if locacao.pagamento_status in ["RECEIVED", "CONFIRMED"] %}
+              <a class="btn btn-sm btn-outline-primary"
+                 href="{{ url_for('locacoes.recibo_pdf', locacao_id=locacao.id) }}"
+                 target="_blank" title="Ver Recibo">
+                <i class="fa-solid fa-receipt"></i>
+              </a>
+              {% endif %}
             </td>
             <td>
               {% if locacao.boleto_url %}
@@ -214,7 +224,7 @@ document.querySelector("#btn-cadastrar-locacao").closest("form").addEventListene
           </tr>
           {% else %}
           <tr>
-            <td colspan="12" class="text-center text-muted">Nenhuma locação ativa encontrada.</td>
+            <td colspan="13" class="text-center text-muted">Nenhuma locação ativa encontrada.</td>
           </tr>
           {% endfor %}
         </tbody>

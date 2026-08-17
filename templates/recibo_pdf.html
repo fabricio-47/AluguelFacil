@@ -1,0 +1,39 @@
+<html>
+<head>
+<style>
+  @page { size: A4; margin: 2.5cm 2cm; }
+  body { font-family: Helvetica, Arial, sans-serif; font-size: 11pt; color: #1a1a1a; line-height: 1.5; }
+  h1 { font-size: 15pt; text-align: center; margin-bottom: 4px; }
+  p { text-align: justify; margin: 6px 0; }
+  .subtitulo { text-align: center; font-size: 10pt; color: #444; margin-bottom: 20px; }
+  .valor { text-align: center; font-size: 20pt; font-weight: bold; margin: 30px 0; }
+  .linha-assinatura { margin-top: 60px; border-top: 1px solid #000; width: 300px; padding-top: 4px; }
+</style>
+</head>
+<body>
+
+<h1>Recibo de Pagamento</h1>
+<p class="subtitulo">Locação nº {{ locacao.id }} — emitido em {{ data_emissao_formatada }}</p>
+
+<p>
+  <strong>Locadora:</strong> {{ company.nome }}{% if company.cnpj %}, CNPJ {{ company.cnpj }}{% endif %}.
+</p>
+<p>
+  <strong>Recebemos de:</strong> {{ cliente.nome }}{% if cliente.cpf %}, CPF {{ cliente.cpf }}{% endif %}.
+</p>
+<p>
+  <strong>Referente a:</strong> locação do equipamento {{ equipamento.nome }}{% if equipamento.modelo %} — {{ equipamento.modelo }}{% endif %}{% if equipamento.codigo_interno %} (código {{ equipamento.codigo_interno }}){% endif %},
+  com início em {{ data_inicio_formatada }}.
+</p>
+
+<p class="valor">{{ valor_formatado }}</p>
+
+<p>
+  Este recibo comprova o pagamento acima referente à locação identificada, não substituindo o contrato
+  de locação vigente entre as partes.
+</p>
+
+<div class="linha-assinatura">{{ company.nome }} (Locadora)</div>
+
+</body>
+</html>

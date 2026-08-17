@@ -1,9 +1,11 @@
 import datetime as dt
+import io
 import time
 import requests
 import psycopg2
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, send_from_directory, abort
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, send_from_directory, abort, Response
 from flask_login import login_required, current_user
+from xhtml2pdf import pisa
 from database import get_db_connection
 from config import Config
 import os
@@ -13,6 +15,7 @@ from contrato import gerar_contrato_pdf
 from multas import calcular_multa
 from estoque import registrar_movimentacao
 from assinaturas_core import salvar_assinatura, buscar_assinatura_recente
+from relatorios import STATUS_RECEBIDO
 
 locacoes_bp = Blueprint("locacoes", __name__, url_prefix="/locacoes")
 
@@ -625,6 +628,70 @@ def contrato_pdf(locacao_id):
 
         uploads_dir = os.path.join(current_app.config["UPLOAD_FOLDER"], "contratos")
         return send_from_directory(directory=uploads_dir, path=contrato_arquivo)
+    finally:
+        cur.close()
+        conn.close()
+
+
+# ==== Gerar recibo de locação paga (PDF na hora, não fica salvo em disco) ====
+@locacoes_bp.route("/recibo/<int:locacao_id>/pdf")
+@login_required
+@requer_permissao(VER_LOCACOES)
+def recibo_pdf(locacao_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT id, cliente_id, equipment_item_id, company_id, data_inicio,
+                   valor, valor_pago, pagamento_status
+            FROM locacoes WHERE id=%s
+        """, (locacao_id,))
+        locacao = cur.fetchone()
+        if not locacao:
+            flash("Locação não encontrada.", "warning")
+            return redirect(url_for("locacoes.listar_locacoes"))
+
+        if locacao["pagamento_status"] not in STATUS_RECEBIDO:
+            flash("Essa locação ainda não tem pagamento confirmado.", "warning")
+            return redirect(url_for("locacoes.listar_locacoes"))
+
+        cur.execute("SELECT nome, cpf FROM clientes WHERE id=%s", (locacao["cliente_id"],))
+        cliente = cur.fetchone()
+
+        cur.execute(
+            "SELECT nome, modelo, codigo_interno FROM equipment_items WHERE id=%s",
+            (locacao["equipment_item_id"],),
+        )
+        equipamento = cur.fetchone()
+
+        cur.execute("SELECT nome, cnpj FROM companies WHERE id=%s", (locacao["company_id"],))
+        company = cur.fetchone()
+
+        valor = locacao["valor_pago"] if locacao["valor_pago"] is not None else (locacao["valor"] or 0)
+        data_inicio = locacao["data_inicio"]
+
+        html = render_template(
+            "recibo_pdf.html",
+            locacao=locacao,
+            cliente=cliente,
+            equipamento=equipamento,
+            company=company,
+            valor_formatado=f"R$ {valor:.2f}".replace(".", ","),
+            data_inicio_formatada=data_inicio.strftime("%d/%m/%Y") if hasattr(data_inicio, "strftime") else data_inicio,
+            data_emissao_formatada=dt.date.today().strftime("%d/%m/%Y"),
+        )
+
+        pdf_buffer = io.BytesIO()
+        resultado = pisa.CreatePDF(html, dest=pdf_buffer)
+        if resultado.err:
+            flash("Erro ao gerar o PDF do recibo.", "danger")
+            return redirect(url_for("locacoes.listar_locacoes"))
+
+        return Response(
+            pdf_buffer.getvalue(),
+            mimetype="application/pdf",
+            headers={"Content-Disposition": f"inline; filename=recibo_locacao_{locacao_id}.pdf"},
+        )
     finally:
         cur.close()
         conn.close()
