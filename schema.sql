@@ -54,7 +54,9 @@ CREATE TABLE IF NOT EXISTS clientes (
     endereco TEXT,
     data_nascimento DATE,
     observacoes TEXT,
-    habilitacao_arquivo VARCHAR(255),
+    doc_frente_arquivo VARCHAR(255),
+    doc_verso_arquivo VARCHAR(255),
+    comprovante_residencia_arquivo VARCHAR(255),
     asaas_id VARCHAR(255) UNIQUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

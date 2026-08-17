@@ -1,12 +1,51 @@
+import os
+import time
+
 import requests
-from flask import Blueprint, render_template, flash, redirect, url_for, request
+from flask import Blueprint, render_template, flash, redirect, url_for, request, current_app, send_from_directory
 from flask_login import login_required, current_user
 from psycopg2.extras import RealDictCursor
+from werkzeug.utils import secure_filename
 from database import get_db_connection
 from config import Config
 from permissions import requer_permissao, tem_permissao, VER_CLIENTES, GERENCIAR_CLIENTES
 
 clientes_bp = Blueprint("clientes", __name__, url_prefix="/clientes")
+
+# Os 3 slots de imagem do cadastro do cliente: nome do campo no form -> coluna no banco.
+DOCUMENTO_CAMPOS = {
+    "doc_frente": "doc_frente_arquivo",
+    "doc_verso": "doc_verso_arquivo",
+    "comprovante_residencia": "comprovante_residencia_arquivo",
+}
+ALLOWED_IMG_EXT = {"png", "jpg", "jpeg"}
+
+
+def _allowed_img(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_IMG_EXT
+
+
+def _unique_filename(cliente_id, filename):
+    _, ext = os.path.splitext(filename)
+    ts = int(time.time() * 1000)
+    return f"{cliente_id}_{ts}{ext.lower()}"
+
+
+def _pasta_documentos():
+    pasta = os.path.join(current_app.config["UPLOAD_FOLDER"], "clientes")
+    os.makedirs(pasta, exist_ok=True)
+    return pasta
+
+
+def _remover_arquivo(filename):
+    if not filename:
+        return
+    caminho = os.path.join(_pasta_documentos(), filename)
+    if os.path.exists(caminho):
+        try:
+            os.remove(caminho)
+        except OSError:
+            pass
 
 @clientes_bp.route("/", methods=["GET", "POST"])
 @login_required
@@ -92,6 +131,13 @@ def listar_clientes():
                 VALUES (%s, 'novo_cliente', %s)
             """, (novo_cliente_id, int(current_user.id)))
 
+            for campo_form, coluna in DOCUMENTO_CAMPOS.items():
+                f = request.files.get(campo_form)
+                if f and f.filename and _allowed_img(f.filename):
+                    filename = _unique_filename(novo_cliente_id, secure_filename(f.filename))
+                    f.save(os.path.join(_pasta_documentos(), filename))
+                    cur.execute(f"UPDATE clientes SET {coluna}=%s WHERE id=%s", (filename, novo_cliente_id))
+
             conn.commit()
 
             flash("Cliente cadastrado com sucesso e integrado ao Asaas.", "success")
@@ -136,10 +182,22 @@ def editar_cliente(id):
         observacoes = request.form.get("observacoes", "").strip()
 
         try:
+            cur.execute(f"SELECT {', '.join(DOCUMENTO_CAMPOS.values())} FROM clientes WHERE id=%s", (id,))
+            atuais = cur.fetchone()
+
             cur.execute("""
                 UPDATE clientes SET nome=%s, email=%s, telefone=%s, cpf=%s, endereco=%s,
                 data_nascimento=%s, observacoes=%s WHERE id=%s
             """, (nome, email, telefone, cpf, endereco, data_nascimento or None, observacoes or None, id))
+
+            for campo_form, coluna in DOCUMENTO_CAMPOS.items():
+                f = request.files.get(campo_form)
+                if f and f.filename and _allowed_img(f.filename):
+                    _remover_arquivo(atuais[coluna])
+                    filename = _unique_filename(id, secure_filename(f.filename))
+                    f.save(os.path.join(_pasta_documentos(), filename))
+                    cur.execute(f"UPDATE clientes SET {coluna}=%s WHERE id=%s", (filename, id))
+
             conn.commit()
             flash("Cliente atualizado com sucesso.", "success")
             return redirect(url_for("clientes.listar_clientes"))
@@ -164,3 +222,42 @@ def editar_cliente(id):
         conn.close()
 
     return render_template("editar_cliente.html", cliente=cliente)
+
+
+@clientes_bp.route("/documentos/<filename>")
+@login_required
+@requer_permissao(VER_CLIENTES)
+def uploaded_documento(filename):
+    return send_from_directory(_pasta_documentos(), filename)
+
+
+@clientes_bp.route("/<int:id>/documentos/<campo>/excluir", methods=["POST"])
+@login_required
+@requer_permissao(GERENCIAR_CLIENTES)
+def excluir_documento(id, campo):
+    coluna = DOCUMENTO_CAMPOS.get(campo)
+    if not coluna:
+        flash("Documento inválido.", "warning")
+        return redirect(url_for("clientes.editar_cliente", id=id))
+
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute(f"SELECT {coluna} FROM clientes WHERE id=%s", (id,))
+        atual = cur.fetchone()
+        if atual and atual[coluna]:
+            _remover_arquivo(atual[coluna])
+            cur.execute(f"UPDATE clientes SET {coluna}=NULL WHERE id=%s", (id,))
+            conn.commit()
+            flash("Documento removido.", "info")
+        else:
+            flash("Não há documento nesse campo.", "warning")
+    except Exception as e:
+        conn.rollback()
+        print("Erro ao remover documento do cliente:", e)
+        flash("Erro ao remover documento.", "danger")
+    finally:
+        cur.close()
+        conn.close()
+
+    return redirect(url_for("clientes.editar_cliente", id=id))

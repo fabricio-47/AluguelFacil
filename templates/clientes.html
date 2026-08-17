@@ -17,7 +17,7 @@
   {% endwith %}
 
   <!-- Formulário para criar novo cliente -->
-  <form method="POST" action="{{ url_for('clientes.listar_clientes') }}">
+  <form method="POST" action="{{ url_for('clientes.listar_clientes') }}" enctype="multipart/form-data">
     <div class="row g-3">
       <div class="col-md-6">
         <label for="nome" class="form-label">Nome *</label>
@@ -46,6 +46,18 @@
       <div class="col-12">
         <label for="observacoes" class="form-label">Observações</label>
         <textarea class="form-control" id="observacoes" name="observacoes" rows="3"></textarea>
+      </div>
+      <div class="col-md-4">
+        <label for="doc_frente" class="form-label">Documento com foto (frente)</label>
+        <input type="file" class="form-control" id="doc_frente" name="doc_frente" accept=".png,.jpg,.jpeg">
+      </div>
+      <div class="col-md-4">
+        <label for="doc_verso" class="form-label">Documento com foto (verso)</label>
+        <input type="file" class="form-control" id="doc_verso" name="doc_verso" accept=".png,.jpg,.jpeg">
+      </div>
+      <div class="col-md-4">
+        <label for="comprovante_residencia" class="form-label">Comprovante de residência</label>
+        <input type="file" class="form-control" id="comprovante_residencia" name="comprovante_residencia" accept=".png,.jpg,.jpeg">
       </div>
     </div>
     <div class="mt-3">
