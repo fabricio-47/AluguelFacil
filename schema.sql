@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS clientes (
     doc_frente_arquivo VARCHAR(255),
     doc_verso_arquivo VARCHAR(255),
     comprovante_residencia_arquivo VARCHAR(255),
+    foto_cliente_arquivo VARCHAR(255),
     asaas_id VARCHAR(255) UNIQUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

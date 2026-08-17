@@ -51,6 +51,7 @@
         ("doc_frente", "doc_frente_arquivo", "Documento com foto (frente)"),
         ("doc_verso", "doc_verso_arquivo", "Documento com foto (verso)"),
         ("comprovante_residencia", "comprovante_residencia_arquivo", "Comprovante de residência"),
+        ("foto_cliente", "foto_cliente_arquivo", "Foto do cliente"),
       ] %}
       <div class="col-md-4">
         <label for="{{ campo }}" class="form-label">{{ rotulo }}</label>
@@ -77,6 +78,7 @@
     ("doc_frente", "doc_frente_arquivo", ""),
     ("doc_verso", "doc_verso_arquivo", ""),
     ("comprovante_residencia", "comprovante_residencia_arquivo", ""),
+    ("foto_cliente", "foto_cliente_arquivo", ""),
   ] %}
     {% if cliente[coluna] %}
     <form id="excluir-{{ campo }}" method="POST"

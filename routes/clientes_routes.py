@@ -12,11 +12,12 @@ from permissions import requer_permissao, tem_permissao, VER_CLIENTES, GERENCIAR
 
 clientes_bp = Blueprint("clientes", __name__, url_prefix="/clientes")
 
-# Os 3 slots de imagem do cadastro do cliente: nome do campo no form -> coluna no banco.
+# Os 4 slots de imagem do cadastro do cliente: nome do campo no form -> coluna no banco.
 DOCUMENTO_CAMPOS = {
     "doc_frente": "doc_frente_arquivo",
     "doc_verso": "doc_verso_arquivo",
     "comprovante_residencia": "comprovante_residencia_arquivo",
+    "foto_cliente": "foto_cliente_arquivo",
 }
 ALLOWED_IMG_EXT = {"png", "jpg", "jpeg"}
 
