@@ -1,35 +1,40 @@
 import json
 from flask import Blueprint, request, abort, Request
 from database import get_db_connection
-from config import Config
+from asaas_config import todos_webhook_secrets_validos
 
 webhook_bp = Blueprint("webhook", __name__, url_prefix="/webhook")
 
-def _authorized(req: Request) -> bool:
-    # Validação simples por token de cabeçalho.
-    # Defina ASAAS_WEBHOOK_SECRET no Render e configure o mesmo token no painel do Asaas.
-    secret = (Config.ASAAS_WEBHOOK_SECRET or "").strip()
-    if not secret:
-        return True  # Sem secret configurado, aceitar (útil em dev). Em produção, deixe obrigatório.
+def _authorized(req: Request, cur) -> bool:
+    # Validação por token de cabeçalho, contra o conjunto de secrets válidos
+    # (todas as empresas configuradas + o global). Sem nenhum secret
+    # configurado em lugar nenhum, aceita (útil em dev).
+    secrets_validos = todos_webhook_secrets_validos(cur)
+    if not secrets_validos:
+        return True
     hdrs = {k.lower(): v for k, v in req.headers.items()}
     token = hdrs.get("x-webhook-token") or hdrs.get("asaas-webhook-token") or hdrs.get("authorization")
-    return token == secret
+    return token in secrets_validos
 
 @webhook_bp.route("/asaas", methods=["POST"])
 def asaas_webhook():
-    if not _authorized(request):
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    if not _authorized(request, cur):
+        cur.close()
+        conn.close()
         abort(401)
 
     try:
         data = request.get_json(force=True, silent=True) or {}
     except Exception:
+        cur.close()
+        conn.close()
         abort(400)
 
     event = data.get("event")
     payment = data.get("payment") or {}
-
-    conn = get_db_connection()
-    cur = conn.cursor()
 
     try:
         if event in ("PAYMENT_CREATED", "PAYMENT_UPDATED"):
