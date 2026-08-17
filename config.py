@@ -23,3 +23,6 @@ class Config:
     # Cohere (assistente de IA interno)
     COHERE_API_KEY = os.getenv("COHERE_API_KEY")
     COHERE_MODEL = os.getenv("COHERE_MODEL", "command-a-03-2025")
+
+    # Criptografia de credenciais por empresa (Asaas, e futuramente outras)
+    APP_ENCRYPTION_KEY = os.getenv("APP_ENCRYPTION_KEY")

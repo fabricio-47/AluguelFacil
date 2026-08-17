@@ -7,3 +7,4 @@ python-dotenv==1.0.0
 xhtml2pdf==0.2.16
 qrcode[pil]==7.4.2
 cohere>=5.13.0
+cryptography>=42.0.0
