@@ -5,16 +5,18 @@ from asaas_config import todos_webhook_secrets_validos
 
 webhook_bp = Blueprint("webhook", __name__, url_prefix="/webhook")
 
-def _authorized(req: Request, cur) -> bool:
-    # Validação por token de cabeçalho, contra o conjunto de secrets válidos
-    # (todas as empresas configuradas + o global). Sem nenhum secret
-    # configurado em lugar nenhum, aceita (útil em dev).
+def _authorized(req: Request, cur):
+    """Retorna (autorizado: bool, company_id: int|None). company_id é o dono
+    do secret que autorizou (None se autorizado pelo secret global, sem
+    escopo de empresa, ou se não autorizado)."""
     secrets_validos = todos_webhook_secrets_validos(cur)
     if not secrets_validos:
-        return True
+        return True, None
     hdrs = {k.lower(): v for k, v in req.headers.items()}
     token = hdrs.get("x-webhook-token") or hdrs.get("asaas-webhook-token") or hdrs.get("authorization")
-    return token in secrets_validos
+    if token not in secrets_validos:
+        return False, None
+    return True, secrets_validos[token]
 
 @webhook_bp.route("/asaas", methods=["POST"])
 def asaas_webhook():
@@ -22,7 +24,8 @@ def asaas_webhook():
     cur = conn.cursor()
 
     try:
-        if not _authorized(request, cur):
+        autorizado, webhook_company_id = _authorized(request, cur)
+        if not autorizado:
             abort(401)
 
         try:
@@ -35,15 +38,15 @@ def asaas_webhook():
 
         try:
             if event in ("PAYMENT_CREATED", "PAYMENT_UPDATED"):
-                _upsert_boleto(cur, payment)
+                _upsert_boleto(cur, payment, webhook_company_id)
 
             elif event in ("PAYMENT_CONFIRMED", "PAYMENT_RECEIVED", "PAYMENT_RECEIVED_IN_CASH"):
-                _upsert_boleto(cur, payment)
-                _atualizar_agregado_locacao(cur, payment)
+                _upsert_boleto(cur, payment, webhook_company_id)
+                _atualizar_agregado_locacao(cur, payment, webhook_company_id)
 
             elif event in ("PAYMENT_OVERDUE", "PAYMENT_DELETED", "PAYMENT_CANCELED"):
-                _upsert_boleto(cur, payment)
-                _atualizar_agregado_locacao(cur, payment)
+                _upsert_boleto(cur, payment, webhook_company_id)
+                _atualizar_agregado_locacao(cur, payment, webhook_company_id)
 
             conn.commit()
         except Exception as e:
@@ -56,7 +59,7 @@ def asaas_webhook():
 
     return {"ok": True}, 200
 
-def _upsert_boleto(cur, p):
+def _upsert_boleto(cur, p, company_id=None):
     asaas_payment_id = p.get("id")
     status = p.get("status")
     valor = p.get("value")
@@ -67,10 +70,17 @@ def _upsert_boleto(cur, p):
     payment_date = p.get("paymentDate")
     subscription_id = p.get("subscription")
 
-    # Relacionar com locação pela assinatura
-    cur.execute("SELECT id FROM locacoes WHERE asaas_subscription_id=%s", (subscription_id,))
+    # Relacionar com locação pela assinatura — escopado por empresa quando o
+    # secret que autorizou o webhook pertence a uma empresa específica (evita
+    # que a empresa A escreva num payment de assinatura da empresa B).
+    query = "SELECT id FROM locacoes WHERE asaas_subscription_id=%s"
+    params = [subscription_id]
+    if company_id is not None:
+        query += " AND company_id=%s"
+        params.append(company_id)
+    cur.execute(query, tuple(params))
     row = cur.fetchone()
-    locacao_id = row[0] if row else None
+    locacao_id = row["id"] if row else None
 
     # Upsert
     cur.execute("SELECT id FROM boletos WHERE asaas_payment_id=%s", (asaas_payment_id,))
@@ -89,16 +99,21 @@ def _upsert_boleto(cur, p):
             VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
         """, (locacao_id, asaas_payment_id, status, valor, net_value, boleto_url, descricao, due_date, payment_date))
 
-def _atualizar_agregado_locacao(cur, p):
+def _atualizar_agregado_locacao(cur, p, company_id=None):
     # Recalcula status agregado da locação com base nos boletos
     subscription_id = p.get("subscription")
     if not subscription_id:
         return
-    cur.execute("SELECT id FROM locacoes WHERE asaas_subscription_id=%s", (subscription_id,))
+    query = "SELECT id FROM locacoes WHERE asaas_subscription_id=%s"
+    params = [subscription_id]
+    if company_id is not None:
+        query += " AND company_id=%s"
+        params.append(company_id)
+    cur.execute(query, tuple(params))
     row = cur.fetchone()
     if not row:
         return
-    locacao_id = row[0]
+    locacao_id = row["id"]
 
     # Somatório valor pago e status mais recente
     cur.execute("""
@@ -109,7 +124,7 @@ def _atualizar_agregado_locacao(cur, p):
         WHERE locacao_id=%s
     """, (locacao_id,))
     agg = cur.fetchone()
-    total_pago = agg[0] if agg else 0
+    total_pago = agg["total_pago"] if agg else 0
 
     # Atualiza campos agregados (se você tiver colunas pagamento_status/valor_pago na locações)
     try:

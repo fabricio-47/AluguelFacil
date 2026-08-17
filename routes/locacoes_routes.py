@@ -239,9 +239,6 @@ def criar_locacao_interna(cur, cliente, equipamento, cliente_id, equipamento_id,
 
     Retorna o id da locação criada.
     """
-    if not getattr(Config, "ASAAS_API_KEY", None) or not getattr(Config, "ASAAS_BASE_URL", None):
-        raise AsaasError("Configuração do Asaas ausente. Verifique ASAAS_API_KEY/ASAAS_BASE_URL.")
-
     asaas_customer_id = cliente["asaas_id"]
     if not asaas_customer_id:
         raise AsaasError("Cliente sem integração Asaas (asaas_id ausente).")
@@ -260,6 +257,8 @@ def criar_locacao_interna(cur, cliente, equipamento, cliente_id, equipamento_id,
         subscription_data["endDate"] = data_fim.strftime("%Y-%m-%d")
 
     asaas = obter_config_asaas(cur, current_user.company_id)
+    if not asaas["api_key"] or not asaas["base_url"]:
+        raise AsaasError("Configuração do Asaas ausente. Configure a chave da empresa em /configuracoes.")
     try:
         resp = requests.post(
             f"{asaas['base_url']}/subscriptions",
@@ -362,9 +361,10 @@ def editar_locacao(id):
                 frequencia_pagamento=%s, observacoes=%s WHERE id=%s
             """, (data_inicio, data_fim, valor, frequencia, observacoes, id))
 
-            cur.execute("SELECT asaas_subscription_id FROM locacoes WHERE id=%s", (id,))
+            cur.execute("SELECT asaas_subscription_id, company_id FROM locacoes WHERE id=%s", (id,))
             row = cur.fetchone()
-            asaas_subscription_id = row[0] if row else None
+            asaas_subscription_id = row["asaas_subscription_id"] if row else None
+            locacao_company_id = row["company_id"] if row else current_user.company_id
 
             if asaas_subscription_id:
                 patch_data = {"value": float(valor), "cycle": frequencia}
@@ -373,7 +373,7 @@ def editar_locacao(id):
                 if data_fim:
                     patch_data["endDate"] = data_fim
 
-                asaas = obter_config_asaas(cur, current_user.company_id)
+                asaas = obter_config_asaas(cur, locacao_company_id)
                 resp = requests.post(
                     f"{asaas['base_url']}/subscriptions/{asaas_subscription_id}",
                     headers={"access_token": asaas["api_key"]},
@@ -478,10 +478,10 @@ def canceladas():
     return render_template("locacoes_canceladas.html", locacoes=locacoes)
 
 # ==== Lógica de cancelamento (reaproveitada por cancelar_locacao e pelo checklist de devolução) ====
-def executar_cancelamento_locacao(cur, locacao_id, equipamento_id, asaas_subscription_id):
+def executar_cancelamento_locacao(cur, locacao_id, equipamento_id, asaas_subscription_id, company_id):
     """Cancela a assinatura no Asaas (se existir) e libera o equipamento. Não faz commit — quem chama controla a transação."""
     if asaas_subscription_id:
-        asaas = obter_config_asaas(cur, current_user.company_id)
+        asaas = obter_config_asaas(cur, company_id)
         resp = requests.post(
             f"{asaas['base_url']}/subscriptions/{asaas_subscription_id}/cancel",
             headers={"access_token": asaas["api_key"]},
@@ -512,7 +512,7 @@ def cancelar_locacao(id):
             flash("Preencha o checklist de devolução antes de finalizar esta locação.", "warning")
             return redirect(url_for("checklists.novo", locacao_id=id, tipo="devolucao"))
 
-        cur.execute("SELECT asaas_subscription_id, equipment_item_id FROM locacoes WHERE id=%s", (id,))
+        cur.execute("SELECT asaas_subscription_id, equipment_item_id, company_id FROM locacoes WHERE id=%s", (id,))
         row = cur.fetchone()
         if not row:
             flash("Locação não encontrada.", "danger")
@@ -521,11 +521,13 @@ def cancelar_locacao(id):
         if isinstance(row, dict):
             asaas_subscription_id = row.get("asaas_subscription_id")
             equipamento_id = row.get("equipment_item_id")
+            locacao_company_id = row.get("company_id")
         else:
             asaas_subscription_id = row[0]
             equipamento_id = row[1]
+            locacao_company_id = row[2]
 
-        executar_cancelamento_locacao(cur, id, equipamento_id, asaas_subscription_id)
+        executar_cancelamento_locacao(cur, id, equipamento_id, asaas_subscription_id, locacao_company_id)
         conn.commit()
         flash("Locação cancelada!", "info")
 
@@ -556,14 +558,14 @@ def sincronizar_boletos_manual(id):
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        cur.execute("SELECT asaas_subscription_id FROM locacoes WHERE id=%s", (id,))
+        cur.execute("SELECT asaas_subscription_id, company_id FROM locacoes WHERE id=%s", (id,))
         row = cur.fetchone()
-        if not row or not row[0]:
+        if not row or not row["asaas_subscription_id"]:
             flash("Assinatura Asaas não vinculada à locação.", "warning")
             return redirect(url_for("locacoes.editar_locacao", id=id))
 
-        sub_id = row[0]
-        asaas = obter_config_asaas(cur, current_user.company_id)
+        sub_id = row["asaas_subscription_id"]
+        asaas = obter_config_asaas(cur, row["company_id"])
         url = f"{asaas['base_url']}/payments?subscription={sub_id}&limit=100"
         resp = requests.get(url, headers={"access_token": asaas["api_key"]}, timeout=30)
         if resp.status_code not in (200, 201):
