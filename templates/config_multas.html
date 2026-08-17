@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Configuração de Multas{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>Configuração de Multas por Atraso</h2>
+  <a href="{{ url_for('financeiro.home') }}" class="btn btn-outline-secondary">
+    <i class="fa-solid fa-arrow-left me-1"></i> Voltar
+  </a>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-header bg-primary text-white">
+    <i class="fa-solid fa-gavel me-1"></i> Regra de multa da empresa
+  </div>
+  <div class="card-body">
+    <form method="post">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label">Tipo de multa</label>
+          <select name="tipo" class="form-select" id="tipo">
+            {% for t in tipos %}
+            <option value="{{ t }}" {% if config and config.tipo == t %}selected{% endif %}>{{ t }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Valor fixo por dia (R$)</label>
+          <input type="number" step="0.01" min="0" name="valor_fixo" class="form-control"
+                 value="{{ config.valor_fixo if config and config.valor_fixo is not none else '' }}">
+          <small class="text-muted">Usado quando o tipo é "fixa".</small>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Percentual por dia (%)</label>
+          <input type="number" step="0.01" min="0" name="percentual" class="form-control"
+                 value="{{ config.percentual if config and config.percentual is not none else '' }}">
+          <small class="text-muted">Usado quando o tipo é "percentual" (sobre o valor da locação).</small>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Juros por dia (%)</label>
+          <input type="number" step="0.01" min="0" name="juros_dia_percentual" class="form-control"
+                 value="{{ config.juros_dia_percentual if config and config.juros_dia_percentual is not none else '' }}">
+          <small class="text-muted">Opcional — juros simples, somado por cima da multa, todo dia de atraso.</small>
+        </div>
+        <div class="col-md-4 d-flex align-items-end">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" value="1" id="ativo" name="ativo"
+                   {% if not config or config.ativo %}checked{% endif %}>
+            <label class="form-check-label" for="ativo">Regra ativa</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <button class="btn btn-success">
+          <i class="fa-solid fa-save me-1"></i> Salvar Configuração
+        </button>
+      </div>
+    </form>
+
+    <small class="text-muted d-block mt-3">
+      "nova_diaria" usa o valor da diária cadastrado em cada equipamento como multa por dia extra de atraso —
+      não precisa preencher valor fixo nem percentual nesse caso.
+    </small>
+  </div>
+</div>
+{% endblock %}

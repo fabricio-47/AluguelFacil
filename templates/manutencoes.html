@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Manutenção{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>Manutenção</h2>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header bg-warning text-dark">
+    <i class="fa-solid fa-screwdriver-wrench me-1"></i> Abrir Manutenção
+  </div>
+  <div class="card-body">
+    <form method="post" action="{{ url_for('manutencoes.listar_manutencoes') }}">
+      <div class="row g-2">
+        <div class="col-md-4">
+          <label class="form-label">Equipamento *</label>
+          <select name="equipment_item_id" class="form-select" required>
+            <option value="">Selecione</option>
+            {% for eq in equipamentos %}
+            <option value="{{ eq.id }}">{{ eq.nome }}{% if eq.codigo_interno %} ({{ eq.codigo_interno }}){% endif %}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Tipo</label>
+          <select name="tipo" class="form-select">
+            {% for tipo in tipos %}
+            <option value="{{ tipo }}">{{ tipo }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Técnico responsável</label>
+          <select name="tecnico_id" class="form-select">
+            <option value="">Não atribuído</option>
+            {% for tec in tecnicos %}
+            <option value="{{ tec.id }}">{{ tec.username }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Conclusão prevista</label>
+          <input type="date" name="data_conclusao_prevista" class="form-control">
+        </div>
+
+        <div class="col-md-8">
+          <label class="form-label">Problema *</label>
+          <input type="text" name="problema" class="form-control" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Fornecedor</label>
+          <input type="text" name="fornecedor" class="form-control">
+        </div>
+
+        <div class="col-12">
+          <button type="submit" class="btn btn-warning mt-2">
+            <i class="fa-solid fa-plus me-1"></i> Abrir Manutenção
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header bg-dark text-white">
+    <i class="fa-solid fa-list me-1"></i> Manutenções
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-striped mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Equipamento</th>
+            <th>Tipo</th>
+            <th>Problema</th>
+            <th>Técnico</th>
+            <th>Abertura</th>
+            <th>Conclusão prevista</th>
+            <th>Status</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in manutencoes %}
+          <tr>
+            <td>{{ m.equipamento_nome }}{% if m.codigo_interno %} ({{ m.codigo_interno }}){% endif %}</td>
+            <td>{{ m.tipo }}</td>
+            <td>{{ m.problema }}</td>
+            <td>{{ m.tecnico_nome or '–' }}</td>
+            <td>{{ m.data_abertura }}</td>
+            <td>{{ m.data_conclusao_prevista or '–' }}</td>
+            <td>
+              {% set cores = {'aberta': 'danger', 'em_andamento': 'warning', 'concluida': 'success'} %}
+              <span class="badge bg-{{ cores.get(m.status, 'secondary') }}">{{ m.status }}</span>
+            </td>
+            <td>
+              <a href="{{ url_for('manutencoes.editar_manutencao', id=m.id) }}" class="btn btn-sm btn-warning">
+                <i class="fa fa-edit"></i>
+              </a>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8" class="text-center text-muted">Nenhuma manutenção registrada.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

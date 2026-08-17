@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}{{ equipamento.nome }} — QR Code{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>{{ equipamento.nome }}</h2>
+  <a href="{{ url_for('equipamentos.editar_equipamento', id=equipamento.id) }}" class="btn btn-outline-secondary">
+    <i class="fa-solid fa-arrow-left me-1"></i> Voltar ao cadastro
+  </a>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-5">
+    <div class="card shadow-sm mb-3">
+      <div class="card-header bg-primary text-white"><i class="fa-solid fa-info-circle me-1"></i> Dados</div>
+      <div class="card-body">
+        <p class="mb-1"><strong>Código interno:</strong> {{ equipamento.codigo_interno or '–' }}</p>
+        <p class="mb-1"><strong>SKU:</strong> {{ equipamento.sku or '–' }}</p>
+        <p class="mb-0"><strong>Status atual:</strong> <span class="badge bg-secondary">{{ equipamento.status }}</span></p>
+      </div>
+    </div>
+
+    {% if pode_alterar_status %}
+    <div class="card shadow-sm mb-3">
+      <div class="card-header bg-dark text-white"><i class="fa-solid fa-pen me-1"></i> Mudar status agora</div>
+      <div class="card-body">
+        <form method="post">
+          <div class="input-group">
+            <select name="status" class="form-select">
+              {% for s in status_editaveis %}
+              <option value="{{ s }}" {% if s == equipamento.status %}selected{% endif %}>{{ s }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-success">Salvar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card shadow-sm">
+      <div class="card-header bg-secondary text-white"><i class="fa-solid fa-screwdriver-wrench me-1"></i> Manutenção</div>
+      <div class="card-body">
+        <p class="mb-1"><strong>Última manutenção:</strong>
+          {% if ultima_manutencao %}
+            {{ ultima_manutencao.data_conclusao_real }} ({{ ultima_manutencao.tipo }})
+          {% else %}–{% endif %}
+        </p>
+        <p class="mb-0"><strong>Próxima prevista:</strong>
+          {% if proxima_manutencao %}
+            {{ proxima_manutencao.data_conclusao_prevista }} ({{ proxima_manutencao.tipo }})
+          {% else %}Nenhuma agendada{% endif %}
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-7">
+    <div class="card shadow-sm">
+      <div class="card-header bg-dark text-white"><i class="fa-solid fa-receipt me-1"></i> Últimas Locações</div>
+      <div class="card-body p-0">
+        <table class="table table-striped mb-0">
+          <thead class="table-light">
+            <tr><th>Cliente</th><th>Início</th><th>Fim</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            {% for l in locacoes %}
+            <tr>
+              <td>{{ l.cliente_nome }}</td>
+              <td>{{ l.data_inicio }}</td>
+              <td>{{ l.data_fim or '–' }}</td>
+              <td>{% if l.cancelado %}<span class="badge bg-secondary">Finalizada</span>{% else %}<span class="badge bg-success">Ativa</span>{% endif %}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="text-center text-muted">Nenhuma locação registrada.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

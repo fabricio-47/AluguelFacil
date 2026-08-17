@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Editar Manutenção{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>Editar Manutenção — {{ manutencao.equipamento_nome }}</h2>
+  <a href="{{ url_for('manutencoes.listar_manutencoes') }}" class="btn btn-outline-secondary">
+    <i class="fa-solid fa-arrow-left me-1"></i> Voltar
+  </a>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-header bg-primary text-white">
+    <i class="fa-solid fa-screwdriver-wrench me-1"></i> Dados da Manutenção
+  </div>
+  <div class="card-body">
+    <form method="post">
+      <div class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label">Tipo</label>
+          <select name="tipo" class="form-select">
+            {% for tipo in tipos %}
+            <option value="{{ tipo }}" {% if manutencao.tipo == tipo %}selected{% endif %}>{{ tipo }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Status</label>
+          <select name="status" class="form-select">
+            {% for st in status_opcoes %}
+            <option value="{{ st }}" {% if manutencao.status == st %}selected{% endif %}>{{ st }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Técnico responsável</label>
+          <select name="tecnico_id" class="form-select">
+            <option value="">Não atribuído</option>
+            {% for tec in tecnicos %}
+            <option value="{{ tec.id }}" {% if manutencao.tecnico_id == tec.id %}selected{% endif %}>{{ tec.username }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Valor (R$)</label>
+          <input type="number" step="0.01" min="0" name="valor" class="form-control" value="{{ manutencao.valor if manutencao.valor is not none else '' }}">
+        </div>
+
+        <div class="col-md-12">
+          <label class="form-label">Problema *</label>
+          <input type="text" name="problema" class="form-control" value="{{ manutencao.problema }}" required>
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label">Conclusão prevista</label>
+          <input type="date" name="data_conclusao_prevista" class="form-control" value="{{ manutencao.data_conclusao_prevista or '' }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Conclusão real</label>
+          <input type="date" name="data_conclusao_real" class="form-control" value="{{ manutencao.data_conclusao_real or '' }}">
+          <small class="text-muted">Se marcar status "concluida" e deixar em branco, hoje é usado automaticamente.</small>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Fornecedor</label>
+          <input type="text" name="fornecedor" class="form-control" value="{{ manutencao.fornecedor or '' }}">
+        </div>
+
+        <div class="col-md-12">
+          <label class="form-label">Peças utilizadas</label>
+          <textarea name="pecas_utilizadas" class="form-control">{{ manutencao.pecas_utilizadas or '' }}</textarea>
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <button class="btn btn-success">
+          <i class="fa-solid fa-save me-1"></i> Salvar Alterações
+        </button>
+      </div>
+    </form>
+
+    <small class="text-muted d-block mt-3">
+      Ao marcar como "concluida", o equipamento volta para "disponível" — a menos que o último checklist de
+      devolução dele tenha indicado estado "danificado", caso em que fica como "danificado" até decisão manual.
+      Enquanto o status for "aberta" ou "em_andamento", o equipamento fica marcado como "manutencao".
+    </small>
+  </div>
+</div>
+{% endblock %}

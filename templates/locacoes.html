@@ -26,11 +26,15 @@
           </select>
         </div>
         <div class="col-md-4">
-          <label for="moto_id" class="form-label">Moto (Modelo - Placa)</label>
-          <select id="moto_id" name="moto_id" class="form-select" required>
+          <label for="equipamento_id" class="form-label">Equipamento (Modelo - Código)</label>
+          <select id="equipamento_id" name="equipamento_id" class="form-select" required>
             <option value="">Selecione</option>
-            {% for moto in motos %}
-            <option value="{{ moto.id }}">{{ moto.modelo }} - {{ moto.placa }}</option>
+            {% for equipamento in equipamentos %}
+            <option value="{{ equipamento.id }}"
+                    data-semanal="{{ equipamento.valor_semanal if equipamento.valor_semanal is not none else '' }}"
+                    data-mensal="{{ equipamento.valor_mensal if equipamento.valor_mensal is not none else '' }}">
+              {{ equipamento.modelo }} - {{ equipamento.codigo }}
+            </option>
             {% endfor %}
           </select>
         </div>
@@ -38,11 +42,7 @@
           <label for="data_inicio" class="form-label">Data Início</label>
           <input id="data_inicio" type="date" name="data_inicio" class="form-control" required>
         </div>
-        <div class="col-md-3">
-          <label for="valor" class="form-label">Valor (R$)</label>
-          <input id="valor" type="number" name="valor" min="0" step="0.01" class="form-control">
-        </div>
-        <div class="col-md-3">
+        <div class="col-md-4">
           <label for="frequencia_pagamento" class="form-label">Frequência de Pagamento</label>
           <select id="frequencia_pagamento" name="frequencia_pagamento" class="form-select" required>
             <option value="">Selecione...</option>
@@ -50,16 +50,22 @@
             <option value="MONTHLY">Mensal</option>
           </select>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-4">
+          <label class="form-label">Valor calculado</label>
+          <input id="valor_calculado" type="text" class="form-control" readonly placeholder="Selecione equipamento e frequência">
+          <small class="text-muted">Calculado a partir do preço cadastrado no equipamento. Se não houver preço pra essa frequência, a locação será bloqueada.</small>
+        </div>
+        <div class="col-md-8">
           <label for="observacoes" class="form-label">Observações</label>
           <textarea id="observacoes" name="observacoes" class="form-control"></textarea>
         </div>
-        <div class="col-md-12">
-          <label for="contrato_pdf" class="form-label">Contrato (PDF)</label>
-          <input id="contrato_pdf" type="file" name="contrato_pdf" accept="application/pdf" class="form-control">
+        <div class="col-12">
+          {% with campo_id="contrato", assinatura_existente=None, nome_sugerido="" %}
+          {% include "_assinatura_pad.html" %}
+          {% endwith %}
         </div>
         <div class="col-12">
-          <button type="submit" class="btn btn-success mt-2">
+          <button type="submit" class="btn btn-success mt-2" id="btn-cadastrar-locacao">
             <i class="fa-solid fa-save me-1"></i> Cadastrar Locação
           </button>
         </div>
@@ -67,6 +73,44 @@
     </form>
   </div>
 </div>
+
+<script>
+document.querySelector("#btn-cadastrar-locacao").closest("form").addEventListener("submit", function (ev) {
+  var pad = window["padAssinatura_contrato"];
+  if (!pad || pad.isEmpty()) {
+    ev.preventDefault();
+    alert("A assinatura do contrato é obrigatória.");
+    return;
+  }
+  document.getElementById("input_assinatura_contrato").value = pad.toDataURL("image/png");
+});
+</script>
+
+<script>
+(function () {
+  var selectEquipamento = document.getElementById("equipamento_id");
+  var selectFrequencia = document.getElementById("frequencia_pagamento");
+  var campoValor = document.getElementById("valor_calculado");
+
+  function atualizarValorCalculado() {
+    var opcao = selectEquipamento.options[selectEquipamento.selectedIndex];
+    var freq = selectFrequencia.value;
+    if (!opcao || !opcao.value || !freq) {
+      campoValor.value = "";
+      return;
+    }
+    var preco = freq === "WEEKLY" ? opcao.dataset.semanal : opcao.dataset.mensal;
+    if (!preco) {
+      campoValor.value = "sem preço cadastrado pra essa frequência";
+    } else {
+      campoValor.value = "R$ " + parseFloat(preco).toFixed(2).replace(".", ",");
+    }
+  }
+
+  selectEquipamento.addEventListener("change", atualizarValorCalculado);
+  selectFrequencia.addEventListener("change", atualizarValorCalculado);
+})();
+</script>
 
 <!-- Listagem -->
 <div class="card">
@@ -80,8 +124,8 @@
           <tr>
             <th>ID</th>
             <th>Cliente</th>
-            <th>Moto</th>
-            <th>Placa</th>
+            <th>Equipamento</th>
+            <th>Código</th>
             <th>Início</th>
             <th>Fim</th>
             <th>Frequência</th>
@@ -97,8 +141,8 @@
           <tr>
             <td>{{ locacao.id }}</td>
             <td>{{ locacao.cliente_nome }}</td>
-            <td>{{ locacao.moto_modelo }}</td>
-            <td>{{ locacao.moto_placa }}</td>
+            <td>{{ locacao.equipamento_modelo }}</td>
+            <td>{{ locacao.equipamento_codigo }}</td>
             <td>
               {% if locacao.data_inicio %}
                 {{ locacao.data_inicio.strftime('%d/%m/%Y') if locacao.data_inicio.__class__.__name__ in ['date', 'datetime'] else locacao.data_inicio }}
@@ -160,6 +204,10 @@
                 <a href="{{ url_for('servicos.listar_servicos', locacao_id=locacao.id) }}"
                    class="btn btn-sm btn-info" title="Serviços">
                   <i class="fa-solid fa-wrench"></i>
+                </a>
+                <a href="{{ url_for('checklists.comparacao', locacao_id=locacao.id) }}"
+                   class="btn btn-sm btn-secondary" title="Checklist de entrega/devolução">
+                  <i class="fa-solid fa-clipboard-check"></i>
                 </a>
               </div>
             </td>

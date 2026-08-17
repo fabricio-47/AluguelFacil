@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Assistente{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2><i class="fa-solid fa-robot me-1"></i> Assistente</h2>
+  <form method="post" action="{{ url_for('assistente.limpar_historico') }}">
+    <button type="submit" class="btn btn-outline-secondary btn-sm">
+      <i class="fa-solid fa-broom me-1"></i> Limpar conversa
+    </button>
+  </form>
+</div>
+
+<div class="card shadow-sm mb-3">
+  <div class="card-body" style="min-height: 200px;">
+    {% for msg in historico %}
+      {% if msg.role == 'user' %}
+      <div class="d-flex justify-content-end mb-2">
+        <div class="bg-primary text-white rounded p-2" style="max-width: 75%;">{{ msg.texto }}</div>
+      </div>
+      {% else %}
+      <div class="d-flex justify-content-start mb-2">
+        <div class="bg-light border rounded p-2" style="max-width: 75%; white-space: pre-wrap;">{{ msg.texto }}</div>
+      </div>
+      {% endif %}
+    {% else %}
+    <p class="text-muted">
+      Pergunte, por exemplo: "Quais equipamentos mais faturaram esse mês?", "Quais clientes estão atrasados?",
+      "Quanto faturei essa semana?" ou "Quais equipamentos precisam de manutenção?".
+    </p>
+    {% endfor %}
+  </div>
+</div>
+
+<form method="post" action="{{ url_for('assistente.fazer_pergunta') }}">
+  <div class="input-group">
+    <input type="text" name="pergunta" class="form-control" placeholder="Pergunte alguma coisa..." required autofocus>
+    <button type="submit" class="btn btn-primary">
+      <i class="fa-solid fa-paper-plane me-1"></i> Enviar
+    </button>
+  </div>
+</form>
+{% endblock %}

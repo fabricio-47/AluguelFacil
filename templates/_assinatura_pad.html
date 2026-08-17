@@ -1,0 +1,54 @@
+{# Partial de assinatura por canvas. Parâmetros esperados:
+   - campo_id: sufixo único pra essa instância (ex: "contrato", "entrega")
+   - assinatura_existente: dict/RealDictRow da assinatura anterior, ou None
+   - nome_sugerido: nome pra pré-preencher no campo "nome do assinante" #}
+<div class="card mb-3">
+  <div class="card-header bg-secondary text-white">
+    <i class="fa-solid fa-signature me-1"></i> Assinatura
+  </div>
+  <div class="card-body">
+    {% if assinatura_existente %}
+    <div class="alert alert-warning">
+      <i class="fa-solid fa-triangle-exclamation me-1"></i>
+      Já existe uma assinatura registrada em {{ assinatura_existente.data_hora }}
+      (IP {{ assinatura_existente.ip_address }}). Pra registrar uma nova, informe o motivo —
+      a assinatura anterior fica preservada no histórico.
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Motivo da nova assinatura *</label>
+      <textarea name="motivo_substituicao_{{ campo_id }}" class="form-control" required></textarea>
+    </div>
+    <input type="hidden" name="substitui_assinatura_id_{{ campo_id }}" value="{{ assinatura_existente.id }}">
+    {% endif %}
+
+    <div class="mb-2">
+      <label class="form-label">Nome de quem está assinando *</label>
+      <input type="text" name="nome_assinante_{{ campo_id }}" class="form-control"
+             value="{{ nome_sugerido or '' }}" required>
+    </div>
+
+    <label class="form-label">Assine no quadro abaixo *</label>
+    <div style="border:1px solid #ccc; border-radius:4px; touch-action:none;">
+      <canvas id="canvas_assinatura_{{ campo_id }}" width="600" height="200" style="width:100%; height:200px; display:block;"></canvas>
+    </div>
+    <button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="window['limparAssinatura_{{ campo_id }}']()">
+      <i class="fa-solid fa-eraser me-1"></i> Limpar
+    </button>
+    <input type="hidden" id="input_assinatura_{{ campo_id }}" name="assinatura_imagem_{{ campo_id }}">
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4/dist/signature_pad.umd.min.js"></script>
+<script>
+(function () {
+  var canvas = document.getElementById("canvas_assinatura_{{ campo_id }}");
+  var ratio = Math.max(window.devicePixelRatio || 1, 1);
+  canvas.width = canvas.offsetWidth * ratio;
+  canvas.height = canvas.offsetHeight * ratio;
+  canvas.getContext("2d").scale(ratio, ratio);
+
+  var pad = new SignaturePad(canvas);
+  window["limparAssinatura_{{ campo_id }}"] = function () { pad.clear(); };
+  window["padAssinatura_{{ campo_id }}"] = pad;
+})();
+</script>

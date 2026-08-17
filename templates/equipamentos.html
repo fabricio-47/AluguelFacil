@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block title %}Equipamentos{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>Equipamentos</h2>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header bg-success text-white">
+    <i class="fa-solid fa-boxes-stacked me-1"></i> Novo Equipamento
+  </div>
+  <div class="card-body">
+    <form method="post" action="{{ url_for('equipamentos.listar_equipamentos') }}" enctype="multipart/form-data">
+      <div class="row g-2">
+        <div class="col-md-4">
+          <label class="form-label">Nome *</label>
+          <input type="text" name="nome" class="form-control" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Categoria</label>
+          <select name="categoria_id" class="form-select">
+            <option value="">Sem categoria</option>
+            {% for categoria in categorias %}
+            <option value="{{ categoria.id }}">{{ categoria.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Status</label>
+          <select name="status" class="form-select">
+            <option value="disponivel" selected>Disponível</option>
+            <option value="reservado">Reservado</option>
+            <option value="manutencao">Manutenção</option>
+            <option value="danificado">Danificado</option>
+            <option value="perdido">Perdido</option>
+            <option value="inativo">Inativo</option>
+          </select>
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label">Código interno</label>
+          <input type="text" name="codigo_interno" class="form-control">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">SKU</label>
+          <input type="text" name="sku" class="form-control">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Código de barras</label>
+          <input type="text" name="codigo_barras" class="form-control">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Ano</label>
+          <input type="number" name="ano" class="form-control">
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label">Marca</label>
+          <input type="text" name="marca" class="form-control">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Modelo</label>
+          <input type="text" name="modelo" class="form-control">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Número de série</label>
+          <input type="text" name="numero_serie" class="form-control">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Foto</label>
+          <input type="file" name="foto" class="form-control" accept=".jpg,.jpeg,.png">
+        </div>
+
+        <div class="col-md-12">
+          <label class="form-label">Descrição</label>
+          <textarea name="descricao" class="form-control"></textarea>
+        </div>
+
+        <div class="col-md-2">
+          <label class="form-label">Valor compra</label>
+          <input type="number" step="0.01" min="0" name="valor_compra" class="form-control">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Valor diária</label>
+          <input type="number" step="0.01" min="0" name="valor_diaria" class="form-control">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Valor semanal</label>
+          <input type="number" step="0.01" min="0" name="valor_semanal" class="form-control">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Valor quinzenal</label>
+          <input type="number" step="0.01" min="0" name="valor_quinzenal" class="form-control">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Valor mensal</label>
+          <input type="number" step="0.01" min="0" name="valor_mensal" class="form-control">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Valor hora</label>
+          <input type="number" step="0.01" min="0" name="valor_hora" class="form-control">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Caução</label>
+          <input type="number" step="0.01" min="0" name="caucao" class="form-control">
+        </div>
+
+        <div class="col-12">
+          <button type="submit" class="btn btn-success mt-2">
+            <i class="fa-solid fa-plus me-1"></i> Adicionar
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header bg-dark text-white">
+    <i class="fa-solid fa-list me-1"></i> Lista de Equipamentos
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-striped mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>ID</th>
+            <th>Código</th>
+            <th>Nome</th>
+            <th>Categoria</th>
+            <th>Marca/Modelo</th>
+            <th>Status</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for equipamento in equipamentos %}
+          <tr>
+            <td>{{ equipamento.id }}</td>
+            <td>{{ equipamento.codigo_interno or '–' }}</td>
+            <td>{{ equipamento.nome }}</td>
+            <td>{{ equipamento.categoria_nome or '–' }}</td>
+            <td>{{ [equipamento.marca, equipamento.modelo] | select | join(' / ') or '–' }}</td>
+            <td>
+              {% set cores = {'disponivel': 'success', 'reservado': 'info', 'alugado': 'primary',
+                               'manutencao': 'warning', 'danificado': 'danger', 'perdido': 'dark', 'inativo': 'secondary'} %}
+              <span class="badge bg-{{ cores.get(equipamento.status, 'secondary') }}">{{ equipamento.status }}</span>
+            </td>
+            <td>
+              <a href="{{ url_for('equipamentos.editar_equipamento', id=equipamento.id) }}" class="btn btn-sm btn-warning">
+                <i class="fa fa-edit"></i>
+              </a>
+
+              <a href="{{ url_for('equipamentos.equipamento_documento', equipamento_id=equipamento.id) }}" class="btn btn-sm btn-info text-white">
+                <i class="fa fa-file"></i>
+              </a>
+
+              <a href="{{ url_for('equipamentos.equipamento_imagens', equipamento_id=equipamento.id) }}" class="btn btn-sm btn-secondary">
+                <i class="fa fa-image"></i>
+              </a>
+
+              <form action="{{ url_for('equipamentos.excluir_equipamento', id=equipamento.id) }}" method="post" style="display:inline">
+                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza que deseja excluir este equipamento?')">
+                  <i class="fa fa-trash"></i>
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="text-center text-muted">Nenhum equipamento cadastrado.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

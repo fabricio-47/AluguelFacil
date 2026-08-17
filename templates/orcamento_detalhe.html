@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Orçamento #{{ orcamento.id }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>Orçamento #{{ orcamento.id }}</h2>
+  <a href="{{ url_for('orcamentos.listar_orcamentos') }}" class="btn btn-outline-secondary">
+    <i class="fa-solid fa-arrow-left me-1"></i> Orçamentos
+  </a>
+</div>
+
+<div class="card mb-4">
+  <div class="card-body">
+    <div class="row mb-2">
+      <div class="col-md-3"><strong>Cliente:</strong> {{ orcamento.cliente_nome }}</div>
+      <div class="col-md-3"><strong>Status:</strong> <span class="badge bg-secondary">{{ orcamento.status }}</span></div>
+      <div class="col-md-3"><strong>Validade:</strong> {{ orcamento.validade or '–' }}</div>
+      <div class="col-md-3"><strong>Criado por:</strong> {{ orcamento.criado_por_nome or '–' }}</div>
+    </div>
+    <div class="row mb-2">
+      <div class="col-md-3"><strong>Frete:</strong> R$ {{ "%.2f"|format(orcamento.frete or 0) }}</div>
+      <div class="col-md-3"><strong>Valor total:</strong> R$ {{ "%.2f"|format(orcamento.valor_total or 0) }}</div>
+    </div>
+    {% if orcamento.observacoes %}
+    <div class="row"><div class="col-12"><strong>Observações:</strong> {{ orcamento.observacoes }}</div></div>
+    {% endif %}
+
+    {% if pode_gerenciar %}
+    <hr>
+    <div class="d-flex gap-2 flex-wrap">
+      {% if orcamento.status == 'criado' %}
+      <form method="post" action="{{ url_for('orcamentos.mudar_status_orcamento', id=orcamento.id) }}">
+        <input type="hidden" name="status" value="enviado">
+        <button type="submit" class="btn btn-outline-primary btn-sm">Marcar como enviado</button>
+      </form>
+      {% endif %}
+      {% if orcamento.status in ('enviado',) %}
+      <form method="post" action="{{ url_for('orcamentos.mudar_status_orcamento', id=orcamento.id) }}">
+        <input type="hidden" name="status" value="visualizado">
+        <button type="submit" class="btn btn-outline-primary btn-sm">Marcar como visualizado</button>
+      </form>
+      {% endif %}
+      {% if orcamento.status in ('criado', 'enviado', 'visualizado') %}
+      <form method="post" action="{{ url_for('orcamentos.mudar_status_orcamento', id=orcamento.id) }}">
+        <input type="hidden" name="status" value="recusado">
+        <button type="submit" class="btn btn-outline-danger btn-sm">Marcar como recusado</button>
+      </form>
+      {% endif %}
+      {% if orcamento.status != 'recusado' %}
+      <form method="post" action="{{ url_for('orcamentos.converter_orcamento', id=orcamento.id) }}">
+        <button type="submit" class="btn btn-success btn-sm">
+          <i class="fa-solid fa-check me-1"></i> Aprovar e Converter em Locação
+        </button>
+      </form>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header bg-dark text-white">
+    <i class="fa-solid fa-list me-1"></i> Itens
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-striped mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Equipamento</th>
+            <th>Qtd</th>
+            <th>Período</th>
+            <th>Frequência</th>
+            <th>Valor unit.</th>
+            <th>Desconto</th>
+            <th>Locação</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for i in itens %}
+          <tr>
+            <td>{{ i.equipamento_nome }}{% if i.equipamento_modelo %} — {{ i.equipamento_modelo }}{% endif %}</td>
+            <td>{{ i.quantidade }}</td>
+            <td>{{ i.periodo_dias or '–' }} dia(s)</td>
+            <td>{{ 'Semanal' if i.frequencia_pagamento == 'WEEKLY' else ('Mensal' if i.frequencia_pagamento == 'MONTHLY' else '–') }}</td>
+            <td>R$ {{ "%.2f"|format(i.valor_unitario or 0) }}</td>
+            <td>R$ {{ "%.2f"|format(i.desconto or 0) }}</td>
+            <td>
+              {% if i.locacao_id %}
+              <span class="badge bg-success">Locação #{{ i.locacao_id }}</span>
+              {% else %}
+              <span class="badge bg-secondary">Pendente</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="text-center text-muted">Nenhum item.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

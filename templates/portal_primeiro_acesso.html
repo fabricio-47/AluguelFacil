@@ -1,0 +1,36 @@
+{% extends "base_portal.html" %}
+{% block title %}Primeiro acesso — Portal do Cliente{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-5">
+    <div class="card">
+      <div class="card-body">
+        <h4 class="mb-3">Primeiro acesso</h4>
+        <p class="text-muted small">Confirme seu e-mail e CPF ou telefone já cadastrados pra criar sua senha.</p>
+        <form method="post" action="{{ url_for('portal.primeiro_acesso') }}">
+          <div class="mb-3">
+            <label class="form-label">E-mail cadastrado</label>
+            <input type="email" name="email" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">CPF ou telefone cadastrado</label>
+            <input type="text" name="documento" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Nova senha</label>
+            <input type="password" name="senha" class="form-control" minlength="6" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Confirmar senha</label>
+            <input type="password" name="confirmar_senha" class="form-control" minlength="6" required>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Criar senha</button>
+        </form>
+        <div class="text-center mt-3">
+          <a href="{{ url_for('portal.login') }}">Voltar ao login</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

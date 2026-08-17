@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Editar Filial{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>Editar Filial</h2>
+  <a href="{{ url_for('filiais.listar_filiais') }}" class="btn btn-outline-secondary">
+    <i class="fa-solid fa-arrow-left me-1"></i> Voltar
+  </a>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-header bg-primary text-white">
+    <i class="fa-solid fa-building me-1"></i> Dados da Filial
+  </div>
+  <div class="card-body">
+    <form method="post">
+      <div class="mb-3">
+        <label class="form-label">Nome *</label>
+        <input type="text" name="nome" class="form-control" value="{{ filial.nome }}" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Endereço</label>
+        <input type="text" name="endereco" class="form-control" value="{{ filial.endereco or '' }}">
+      </div>
+      <button class="btn btn-success">
+        <i class="fa-solid fa-save me-1"></i> Salvar Alterações
+      </button>
+      <a href="{{ url_for('filiais.listar_filiais') }}" class="btn btn-secondary">Cancelar</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

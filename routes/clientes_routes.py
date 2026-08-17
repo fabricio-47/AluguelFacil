@@ -1,16 +1,22 @@
 import requests
 from flask import Blueprint, render_template, flash, redirect, url_for, request
-from flask_login import login_required
+from flask_login import login_required, current_user
 from psycopg2.extras import RealDictCursor
 from database import get_db_connection
 from config import Config
+from permissions import requer_permissao, tem_permissao, VER_CLIENTES, GERENCIAR_CLIENTES
 
 clientes_bp = Blueprint("clientes", __name__, url_prefix="/clientes")
 
 @clientes_bp.route("/", methods=["GET", "POST"])
 @login_required
+@requer_permissao(VER_CLIENTES)
 def listar_clientes():
     if request.method == "POST":
+        if not tem_permissao(GERENCIAR_CLIENTES):
+            flash("Você não tem permissão para cadastrar clientes.", "danger")
+            return redirect(url_for("clientes.listar_clientes"))
+
         nome = request.form.get("nome", "").strip()
         email = request.form.get("email", "").strip()
         telefone = request.form.get("telefone", "").strip()
@@ -76,7 +82,16 @@ def listar_clientes():
             cur.execute("""
                 INSERT INTO clientes (nome, email, telefone, cpf, endereco, data_nascimento, observacoes, asaas_id)
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+                RETURNING id
             """, (nome, email, telefone, cpf, endereco, data_nascimento or None, observacoes or None, asaas_id))
+            novo_cliente_id = cur.fetchone()["id"]
+
+            # Todo cliente novo entra no pipeline de vendas na etapa inicial.
+            cur.execute("""
+                INSERT INTO pipeline_clientes (cliente_id, etapa, usuario_responsavel)
+                VALUES (%s, 'novo_cliente', %s)
+            """, (novo_cliente_id, int(current_user.id)))
+
             conn.commit()
 
             flash("Cliente cadastrado com sucesso e integrado ao Asaas.", "success")
@@ -106,6 +121,7 @@ def listar_clientes():
 
 @clientes_bp.route("/editar/<int:id>", methods=["GET", "POST"])
 @login_required
+@requer_permissao(GERENCIAR_CLIENTES)
 def editar_cliente(id):
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)

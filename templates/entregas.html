@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Entregas{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>{{ 'Entregas' if pode_gerenciar else 'Minhas Entregas' }}</h2>
+</div>
+
+{% if pode_gerenciar %}
+<div class="card mb-4">
+  <div class="card-header bg-primary text-white">
+    <i class="fa-solid fa-truck me-1"></i> Nova Entrega
+  </div>
+  <div class="card-body">
+    <form method="post" action="{{ url_for('entregas.listar_entregas') }}">
+      <div class="row g-2">
+        <div class="col-md-3">
+          <label class="form-label">Locação</label>
+          <select name="locacao_id" class="form-select" required>
+            <option value="">Selecione</option>
+            {% for loc in locacoes %}
+            <option value="{{ loc.id }}">#{{ loc.id }} — {{ loc.cliente_nome }} ({{ loc.equipamento_nome }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Endereço</label>
+          <input type="text" name="endereco" class="form-control" required>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Entregador</label>
+          <select name="entregador_id" class="form-select">
+            <option value="">Não atribuído</option>
+            {% for ent in entregadores %}
+            <option value="{{ ent.id }}">{{ ent.username }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Veículo</label>
+          <input type="text" name="veiculo" class="form-control">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Horário previsto</label>
+          <input type="datetime-local" name="horario_previsto" class="form-control">
+        </div>
+        <div class="col-md-12">
+          <label class="form-label">Observações</label>
+          <input type="text" name="observacoes" class="form-control">
+        </div>
+        <div class="col-12">
+          <button type="submit" class="btn btn-primary mt-2">
+            <i class="fa fa-plus me-1"></i> Registrar Entrega
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-header bg-dark text-white">
+    <i class="fa-solid fa-list me-1"></i> Lista de Entregas
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-striped mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Locação</th>
+            <th>Cliente</th>
+            <th>Endereço</th>
+            {% if pode_gerenciar %}<th>Entregador</th>{% endif %}
+            <th>Veículo</th>
+            <th>Horário previsto</th>
+            <th>Status</th>
+            <th>Ação</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in entregas %}
+          <tr>
+            <td>#{{ e.locacao_id }}</td>
+            <td>{{ e.cliente_nome }}</td>
+            <td>{{ e.endereco }}</td>
+            {% if pode_gerenciar %}<td>{{ e.entregador_nome or '–' }}</td>{% endif %}
+            <td>{{ e.veiculo or '–' }}</td>
+            <td>{{ e.horario_previsto or '–' }}</td>
+            <td>
+              <form method="post" action="{{ url_for('entregas.atualizar_status', id=e.id) }}" class="d-flex gap-1">
+                <select name="status" class="form-select form-select-sm">
+                  {% for st in status_opcoes %}
+                  <option value="{{ st }}" {% if e.status == st %}selected{% endif %}>{{ st }}</option>
+                  {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-sm btn-outline-primary">Salvar</button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="{{ 7 if pode_gerenciar else 6 }}" class="text-center text-muted">Nenhuma entrega encontrada.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

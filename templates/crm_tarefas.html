@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Tarefas CRM{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>Tarefas de CRM</h2>
+</div>
+
+{% if pode_gerenciar %}
+<div class="card mb-4">
+  <div class="card-header bg-primary text-white">
+    <i class="fa-solid fa-plus me-1"></i> Nova Tarefa
+  </div>
+  <div class="card-body">
+    <form method="post" action="{{ url_for('crm.tarefas') }}">
+      <div class="row g-2">
+        <div class="col-md-3">
+          <label class="form-label">Cliente</label>
+          <select name="cliente_id" class="form-select" required>
+            <option value="">Selecione</option>
+            {% for c in clientes %}
+            <option value="{{ c.id }}">{{ c.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Tipo</label>
+          <select name="tipo" class="form-select" required>
+            {% for t in tipos %}
+            <option value="{{ t }}">{{ t }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Data prevista</label>
+          <input type="date" name="data_prevista" class="form-control">
+        </div>
+        <div class="col-md-5">
+          <label class="form-label">Descrição</label>
+          <input type="text" name="descricao" class="form-control">
+        </div>
+        <div class="col-12">
+          <button type="submit" class="btn btn-primary mt-2">
+            <i class="fa fa-plus me-1"></i> Criar Tarefa
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-header bg-dark text-white">
+    <i class="fa-solid fa-list me-1"></i> Lista de Tarefas
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-striped mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Cliente</th>
+            <th>Tipo</th>
+            <th>Descrição</th>
+            <th>Data prevista</th>
+            <th>Responsável</th>
+            <th>Status</th>
+            <th>Ação</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in tarefas %}
+          <tr class="{{ 'table-success' if t.concluida else '' }}">
+            <td>{{ t.cliente_nome }}</td>
+            <td>{{ t.tipo }}</td>
+            <td>{{ t.descricao or '–' }}</td>
+            <td>{{ t.data_prevista or '–' }}</td>
+            <td>{{ t.responsavel_nome or '–' }}</td>
+            <td>{{ 'Concluída' if t.concluida else 'Pendente' }}</td>
+            <td>
+              {% if not t.concluida %}
+              <form method="post" action="{{ url_for('crm.concluir_tarefa', id=t.id) }}">
+                <button type="submit" class="btn btn-sm btn-outline-success">Concluir</button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="text-center text-muted">Nenhuma tarefa encontrada.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

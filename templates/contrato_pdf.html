@@ -1,0 +1,72 @@
+<html>
+<head>
+<style>
+  @page { size: A4; margin: 2.5cm 2cm; }
+  body { font-family: Helvetica, Arial, sans-serif; font-size: 11pt; color: #1a1a1a; line-height: 1.5; }
+  h1 { font-size: 15pt; text-align: center; margin-bottom: 4px; }
+  h2 { font-size: 12pt; margin-top: 18px; margin-bottom: 6px; }
+  p { text-align: justify; margin: 6px 0; }
+  .subtitulo { text-align: center; font-size: 10pt; color: #444; margin-bottom: 20px; }
+  .assinaturas { margin-top: 50px; }
+  .linha-assinatura { margin-top: 40px; border-top: 1px solid #000; width: 300px; padding-top: 4px; }
+  .prova-assinatura { font-size: 8pt; color: #444; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<h1>Contrato de Locação de Equipamento</h1>
+<p class="subtitulo">Locação nº {{ locacao.id }} — gerado em {{ data_inicio_formatada }}</p>
+
+<h2>1. Partes</h2>
+<p>
+  <strong>Locadora:</strong> {{ company.nome }}{% if company.cnpj %}, CNPJ {{ company.cnpj }}{% endif %}.
+</p>
+<p>
+  <strong>Locatário(a):</strong> {{ cliente.nome }}{% if cliente.cpf %}, CPF {{ cliente.cpf }}{% endif %}{% if cliente.endereco %}, residente em {{ cliente.endereco }}{% endif %}.
+</p>
+
+<h2>2. Objeto</h2>
+<p>
+  O presente contrato tem por objeto a locação do equipamento
+  <strong>{{ equipamento.nome }}</strong>{% if equipamento.modelo %} — {{ equipamento.modelo }}{% endif %}{% if equipamento.codigo_interno %} (código {{ equipamento.codigo_interno }}){% endif %},
+  em perfeitas condições de uso, entregue ao locatário na data de início da locação.
+</p>
+
+<h2>3. Valor e Condições de Pagamento</h2>
+<p>
+  O valor da locação é de <strong>{{ valor_formatado }}</strong>, cobrado com periodicidade
+  <strong>{{ frequencia_label }}</strong>, com início em <strong>{{ data_inicio_formatada }}</strong>,
+  renovando-se automaticamente a cada ciclo até o cancelamento da locação por qualquer das partes.
+</p>
+
+<h2>4. Responsabilidades</h2>
+<p>
+  O locatário compromete-se a zelar pela conservação do equipamento, utilizá-lo de acordo com sua
+  finalidade, e devolvê-lo em condições compatíveis com o uso normal ao término da locação. Danos,
+  perdas ou extravios são de responsabilidade do locatário.
+</p>
+
+<h2>5. Cancelamento</h2>
+<p>
+  A locação poderá ser cancelada por qualquer das partes mediante comunicação prévia, encerrando-se
+  a cobrança recorrente e liberando o equipamento para nova locação.
+</p>
+
+<div class="assinaturas">
+  <div class="linha-assinatura">{{ company.nome }} (Locadora)</div>
+
+  {% if assinatura %}
+  <div style="margin-top: 40px;">
+    <img src="{{ assinatura.imagem_data_uri }}" style="max-width:300px; max-height:100px;">
+    <div class="linha-assinatura" style="margin-top:4px;">{{ assinatura.nome_assinante }} (Locatário)</div>
+    <div class="prova-assinatura">
+      Assinado eletronicamente em {{ assinatura.data_hora }} pelo IP {{ assinatura.ip_address }}.
+    </div>
+  </div>
+  {% else %}
+  <div class="linha-assinatura">{{ cliente.nome }} (Locatário)</div>
+  {% endif %}
+</div>
+
+</body>
+</html>

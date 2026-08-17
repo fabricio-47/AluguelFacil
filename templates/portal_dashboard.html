@@ -1,0 +1,80 @@
+{% extends "base_portal.html" %}
+{% block title %}Minha Área{% endblock %}
+{% block content %}
+<h2 class="mb-4">Olá, {{ cliente.nome }}</h2>
+
+<div class="card mb-4">
+  <div class="card-header bg-dark text-white"><i class="fa-solid fa-receipt me-1"></i> Minhas Locações</div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-striped mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Equipamento</th>
+            <th>Início</th>
+            <th>Fim</th>
+            <th>Valor</th>
+            <th>Status</th>
+            <th>Pagamento</th>
+            <th>Contrato</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for l in locacoes %}
+          <tr>
+            <td>{{ l.equipamento_nome }}{% if l.equipamento_modelo %} — {{ l.equipamento_modelo }}{% endif %}</td>
+            <td>{{ l.data_inicio }}</td>
+            <td>{{ l.data_fim or '–' }}</td>
+            <td>R$ {{ "%.2f"|format(l.valor or 0) }}</td>
+            <td>
+              {% if l.cancelado %}<span class="badge bg-secondary">Finalizada</span>
+              {% else %}<span class="badge bg-success">Ativa</span>{% endif %}
+            </td>
+            <td>{{ l.pagamento_status or '–' }}</td>
+            <td>
+              {% if l.contrato_arquivo %}
+              <a href="{{ url_for('portal.contrato_pdf', locacao_id=l.id) }}" class="btn btn-sm btn-outline-primary">
+                <i class="fa-solid fa-file-pdf me-1"></i> PDF
+              </a>
+              {% else %}–{% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="7" class="text-center text-muted">Nenhuma locação encontrada.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header bg-dark text-white"><i class="fa-solid fa-file-invoice-dollar me-1"></i> Meus Orçamentos</div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-striped mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>#</th>
+            <th>Status</th>
+            <th>Valor total</th>
+            <th>Validade</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for o in orcamentos %}
+          <tr>
+            <td>#{{ o.id }}</td>
+            <td><span class="badge bg-secondary">{{ o.status }}</span></td>
+            <td>R$ {{ "%.2f"|format(o.valor_total or 0) }}</td>
+            <td>{{ o.validade or '–' }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" class="text-center text-muted">Nenhum orçamento encontrado.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

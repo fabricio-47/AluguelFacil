@@ -33,7 +33,7 @@ def listar_servicos(locacao_id):
 
     # GET: listar serviços da locação
     cur.execute("""
-        SELECT s.id, s.descricao, s.valor, s.data_criacao
+        SELECT s.id, s.descricao, s.valor, s.data_servico
         FROM servicos_locacao s
         WHERE s.locacao_id = %s
         ORDER BY s.id DESC
@@ -41,10 +41,10 @@ def listar_servicos(locacao_id):
     servicos = cur.fetchall()
 
     cur.execute("""
-        SELECT l.id, c.nome, m.modelo, m.placa
+        SELECT l.id, c.nome, ei.modelo, ei.codigo_interno AS placa
         FROM locacoes l
         JOIN clientes c ON c.id = l.cliente_id
-        JOIN motos m ON m.id = l.moto_id
+        JOIN equipment_items ei ON ei.id = l.equipment_item_id
         WHERE l.id = %s
     """, (locacao_id,))
     locacao = cur.fetchone()

@@ -1,0 +1,101 @@
+{% extends "base_publico.html" %}
+{% block title %}Catálogo{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>Equipamentos disponíveis</h2>
+</div>
+
+{% if categorias %}
+<div class="mb-4 d-flex gap-2 flex-wrap">
+  <a href="{{ url_for('catalogo.ver_catalogo', slug=company.slug) }}"
+     class="btn btn-sm {{ 'btn-dark' if not categoria_selecionada else 'btn-outline-dark' }}">Todos</a>
+  {% for c in categorias %}
+  <a href="{{ url_for('catalogo.ver_catalogo', slug=company.slug, categoria=c.id) }}"
+     class="btn btn-sm {{ 'btn-dark' if categoria_selecionada == c.id else 'btn-outline-dark' }}">{{ c.nome }}</a>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="row g-4">
+  {% for e in equipamentos %}
+  <div class="col-md-4">
+    <div class="card h-100">
+      {% if e.foto %}
+      <img src="{{ url_for('catalogo.imagem_equipamento', filename=e.foto) }}" class="card-img-top" alt="{{ e.nome }}" style="height:200px;object-fit:cover;">
+      {% else %}
+      <div class="bg-secondary bg-opacity-10 d-flex align-items-center justify-content-center" style="height:200px;">
+        <i class="fa-solid fa-image fa-2x text-muted"></i>
+      </div>
+      {% endif %}
+      <div class="card-body">
+        <h5 class="card-title">{{ e.nome }}{% if e.modelo %} — {{ e.modelo }}{% endif %}</h5>
+        {% if e.categoria_nome %}<span class="badge bg-secondary mb-2">{{ e.categoria_nome }}</span>{% endif %}
+        {% if e.descricao %}<p class="card-text text-muted small">{{ e.descricao }}</p>{% endif %}
+        <ul class="list-unstyled small mb-3">
+          {% if e.valor_diaria %}<li>Diária: R$ {{ "%.2f"|format(e.valor_diaria) }}</li>{% endif %}
+          {% if e.valor_semanal %}<li>Semanal: R$ {{ "%.2f"|format(e.valor_semanal) }}</li>{% endif %}
+          {% if e.valor_mensal %}<li>Mensal: R$ {{ "%.2f"|format(e.valor_mensal) }}</li>{% endif %}
+          {% if e.caucao %}<li>Caução: R$ {{ "%.2f"|format(e.caucao) }}</li>{% endif %}
+        </ul>
+        <button type="button" class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#modal-solicitar-{{ e.id }}">
+          Solicitar Locação
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modal-solicitar-{{ e.id }}" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form method="post" action="{{ url_for('catalogo.solicitar_locacao', slug=company.slug) }}">
+          <div class="modal-header">
+            <h5 class="modal-title">Solicitar: {{ e.nome }}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" name="equipamento_id" value="{{ e.id }}">
+            <div class="mb-2">
+              <label class="form-label">Nome</label>
+              <input type="text" name="nome" class="form-control" required>
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Telefone</label>
+              <input type="text" name="telefone" class="form-control" required>
+            </div>
+            <div class="mb-2">
+              <label class="form-label">E-mail</label>
+              <input type="email" name="email" class="form-control" required>
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Data desejada de retirada</label>
+              <input type="date" name="data_desejada" class="form-control">
+            </div>
+            <div class="row g-2">
+              <div class="col-6">
+                <label class="form-label">Período (dias)</label>
+                <input type="number" name="periodo_dias" class="form-control" min="1">
+              </div>
+              <div class="col-6">
+                <label class="form-label">Frequência</label>
+                <select name="frequencia_pagamento" class="form-select" required>
+                  <option value="WEEKLY">Semanal</option>
+                  <option value="MONTHLY">Mensal</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Enviar Solicitação</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="col-12">
+    <p class="text-muted text-center">Nenhum equipamento disponível no momento.</p>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,40 @@
+<html>
+<head>
+<style>
+  @page { size: A4 landscape; margin: 1.5cm; }
+  body { font-family: Helvetica, Arial, sans-serif; font-size: 10pt; color: #1a1a1a; }
+  h1 { font-size: 14pt; margin-bottom: 2px; }
+  p.subtitulo { font-size: 9pt; color: #444; margin-top: 0; margin-bottom: 14px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { border: 1px solid #ccc; padding: 5px 8px; text-align: left; }
+  th { background: #eee; }
+</style>
+</head>
+<body>
+
+<h1>{{ titulo }}</h1>
+<p class="subtitulo">Período: {{ data_inicio }} a {{ data_fim }}</p>
+
+<table>
+  <thead>
+    <tr>
+      {% for coluna in colunas %}
+      <th>{{ coluna }}</th>
+      {% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for linha in linhas %}
+    <tr>
+      {% for valor in linha %}
+      <td>{{ valor }}</td>
+      {% endfor %}
+    </tr>
+    {% else %}
+    <tr><td colspan="{{ colunas|length }}">Nenhum dado no período selecionado.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+</body>
+</html>

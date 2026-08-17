@@ -1,0 +1,119 @@
+{% extends "base_admin_plataforma.html" %}
+{% block title %}Dashboard — Admin da Plataforma{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>Visão Geral</h2>
+  <a href="{{ url_for('admin_plataforma.nova_empresa') }}" class="btn btn-primary">
+    <i class="fa-solid fa-plus me-1"></i> Nova Empresa
+  </a>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-2">
+    <div class="card text-center"><div class="card-body">
+      <div class="text-muted small">Empresas Ativas</div>
+      <div class="h3">{{ indicadores.total_ativas }}</div>
+    </div></div>
+  </div>
+  <div class="col-md-2">
+    <div class="card text-center"><div class="card-body">
+      <div class="text-muted small">Bloqueadas</div>
+      <div class="h3">{{ indicadores.total_bloqueadas }}</div>
+    </div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center"><div class="card-body">
+      <div class="text-muted small">MRR Estimado</div>
+      <div class="h3">R$ {{ "%.2f"|format(indicadores.mrr) }}</div>
+    </div></div>
+  </div>
+  <div class="col-md-2">
+    <div class="card text-center"><div class="card-body">
+      <div class="text-muted small">Novas no Mês</div>
+      <div class="h3">{{ indicadores.novas_no_mes }}</div>
+    </div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center"><div class="card-body">
+      <div class="text-muted small">Churn no Mês</div>
+      <div class="h3">{{ indicadores.churn_no_mes }}</div>
+    </div></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header bg-dark text-white"><i class="fa-solid fa-building me-1"></i> Empresas</div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-striped mb-0 align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Nome</th>
+            <th>Plano</th>
+            <th>Status</th>
+            <th>Criada em</th>
+            <th>Usuários</th>
+            <th>Equipamentos</th>
+            <th>Filiais</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in empresas %}
+          <tr>
+            <td>{{ e.nome }}<br><span class="text-muted small">/catalogo/{{ e.slug }}</span></td>
+            <td>{{ e.plano }}</td>
+            <td>
+              {% if e.status == 'ativo' %}<span class="badge bg-success">ativo</span>
+              {% elif e.status == 'trial' %}<span class="badge bg-info text-dark">trial</span>
+              {% else %}<span class="badge bg-danger">bloqueado</span>{% endif %}
+              {% if e.data_bloqueio %}<br><span class="text-muted small">vence {{ e.data_bloqueio }}</span>{% endif %}
+            </td>
+            <td>{{ e.created_at }}</td>
+            <td>{{ e.usuarios_usados }}{% if e.limite_usuarios %} / {{ e.limite_usuarios }}{% endif %}</td>
+            <td>{{ e.equipamentos_usados }}{% if e.limite_equipamentos %} / {{ e.limite_equipamentos }}{% endif %}</td>
+            <td>{{ e.filiais_usadas }}{% if e.limite_filiais %} / {{ e.limite_filiais }}{% endif %}</td>
+            <td>
+              <div class="d-flex flex-column gap-1">
+                <form method="post" action="{{ url_for('admin_plataforma.mudar_status_empresa', id=e.id) }}" class="d-flex gap-1">
+                  <select name="status" class="form-select form-select-sm">
+                    {% for s in status_opcoes %}
+                    <option value="{{ s }}" {% if s == e.status %}selected{% endif %}>{{ s }}</option>
+                    {% endfor %}
+                  </select>
+                  <button type="submit" class="btn btn-sm btn-outline-primary">Status</button>
+                </form>
+
+                <form method="post" action="{{ url_for('admin_plataforma.mudar_plano_empresa', id=e.id) }}" class="d-flex gap-1">
+                  <select name="plano" class="form-select form-select-sm">
+                    {% for p in planos %}
+                    <option value="{{ p }}" {% if p == e.plano %}selected{% endif %}>{{ p }}</option>
+                    {% endfor %}
+                  </select>
+                  <input type="number" name="limite_usuarios" class="form-control form-control-sm" placeholder="lim. usuários" value="{{ e.limite_usuarios or '' }}" style="max-width:110px;">
+                  <input type="number" name="limite_equipamentos" class="form-control form-control-sm" placeholder="lim. equip." value="{{ e.limite_equipamentos or '' }}" style="max-width:110px;">
+                  <input type="number" name="limite_filiais" class="form-control form-control-sm" placeholder="lim. filiais" value="{{ e.limite_filiais or '' }}" style="max-width:110px;">
+                  <button type="submit" class="btn btn-sm btn-outline-primary">Plano</button>
+                </form>
+
+                <div class="d-flex gap-1">
+                  <form method="post" action="{{ url_for('admin_plataforma.periodo_gratis_empresa', id=e.id) }}" class="d-flex gap-1">
+                    <input type="number" name="dias" class="form-control form-control-sm" placeholder="dias grátis" value="30" style="max-width:110px;">
+                    <button type="submit" class="btn btn-sm btn-outline-info">Período Grátis</button>
+                  </form>
+                  <form method="post" action="{{ url_for('admin_plataforma.confirmar_pagamento_empresa', id=e.id) }}">
+                    <button type="submit" class="btn btn-sm btn-outline-success">Confirmar Pagamento</button>
+                  </form>
+                </div>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="8" class="text-center text-muted">Nenhuma empresa cadastrada.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

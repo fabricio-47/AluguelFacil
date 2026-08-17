@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Portal do Cliente{% endblock %}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #f8f9fa; }
+    footer { margin-top: 40px; padding: 15px 0; background: #212529; color: #aaa; text-align: center; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <nav class="navbar navbar-dark bg-dark">
+    <div class="container d-flex justify-content-between">
+      <span class="navbar-brand mb-0 h1"><i class="fa-solid fa-user me-1"></i> Portal do Cliente</span>
+      {% if cliente %}
+      <form method="post" action="{{ url_for('portal.logout') }}" class="d-flex">
+        <button type="submit" class="btn btn-outline-light btn-sm">Sair</button>
+      </form>
+      {% endif %}
+    </div>
+  </nav>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="container mt-3">
+    {% for category, message in messages %}
+    {% set bs_cat = 'danger' if category == 'error' else (category if category in ['success','info','warning','danger'] else 'secondary') %}
+    <div class="alert alert-{{ bs_cat }} alert-dismissible fade show" role="alert">
+      {{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+    </div>
+    {% endfor %}
+    </div>
+    {% endif %}
+  {% endwith %}
+
+  <div class="container mt-4">
+    {% block content %}{% endblock %}
+  </div>
+
+  <footer>
+    <div class="container"><p>&copy; 2026</p></div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

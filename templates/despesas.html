@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Despesas{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>Despesas</h2>
+  <div class="btn-group">
+    <a href="{{ url_for('financeiro.home') }}" class="btn btn-outline-secondary">
+      <i class="fa-solid fa-chart-line me-1"></i> Dashboard Financeiro
+    </a>
+    <a href="{{ url_for('financeiro.fluxo_caixa') }}" class="btn btn-outline-secondary">
+      <i class="fa-solid fa-money-bill-transfer me-1"></i> Fluxo de Caixa
+    </a>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header bg-danger text-white">
+    <i class="fa-solid fa-file-invoice-dollar me-1"></i> Nova Despesa
+  </div>
+  <div class="card-body">
+    <form method="post" action="{{ url_for('financeiro.listar_despesas') }}">
+      <div class="row g-2">
+        <div class="col-md-4">
+          <label class="form-label">Descrição *</label>
+          <input type="text" name="descricao" class="form-control" required>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Categoria</label>
+          <select name="categoria" class="form-select">
+            {% for cat in categorias %}
+            <option value="{{ cat }}">{{ cat }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Valor (R$) *</label>
+          <input type="number" step="0.01" min="0" name="valor" class="form-control" required>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Vencimento *</label>
+          <input type="date" name="data_vencimento" class="form-control" required>
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label">Fornecedor</label>
+          <input type="text" name="fornecedor" class="form-control">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Forma de pagamento</label>
+          <input type="text" name="forma_pagamento" class="form-control" placeholder="Pix, boleto, cartão...">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Observações</label>
+          <input type="text" name="observacoes" class="form-control">
+        </div>
+
+        <div class="col-md-3 d-flex align-items-end">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" value="1" id="paga" name="paga">
+            <label class="form-check-label" for="paga">Já paga</label>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Data do pagamento</label>
+          <input type="date" name="data_pagamento" class="form-control">
+        </div>
+
+        <div class="col-12">
+          <button type="submit" class="btn btn-danger mt-2">
+            <i class="fa-solid fa-plus me-1"></i> Adicionar Despesa
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header bg-dark text-white">
+    <i class="fa-solid fa-list me-1"></i> Lista de Despesas
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-striped mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Descrição</th>
+            <th>Categoria</th>
+            <th>Valor</th>
+            <th>Vencimento</th>
+            <th>Fornecedor</th>
+            <th>Status</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for despesa in despesas %}
+          <tr>
+            <td>{{ despesa.descricao }}</td>
+            <td>{{ despesa.categoria }}</td>
+            <td>R$ {{ "%.2f"|format(despesa.valor) }}</td>
+            <td>{{ despesa.data_vencimento.strftime('%d/%m/%Y') if despesa.data_vencimento else '-' }}</td>
+            <td>{{ despesa.fornecedor or '–' }}</td>
+            <td>
+              {% set cores = {'pendente': 'warning', 'pago': 'success', 'atrasado': 'danger'} %}
+              <span class="badge bg-{{ cores.get(despesa.status_exibido, 'secondary') }}">{{ despesa.status_exibido }}</span>
+            </td>
+            <td>
+              <a href="{{ url_for('financeiro.editar_despesa', id=despesa.id) }}" class="btn btn-sm btn-warning">
+                <i class="fa fa-edit"></i>
+              </a>
+              <form action="{{ url_for('financeiro.excluir_despesa', id=despesa.id) }}" method="post" style="display:inline">
+                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza que deseja excluir esta despesa?')">
+                  <i class="fa fa-trash"></i>
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="text-center text-muted">Nenhuma despesa cadastrada.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

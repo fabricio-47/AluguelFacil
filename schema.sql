@@ -22,9 +22,25 @@ CREATE TABLE IF NOT EXISTS usuarios (
     email citext NOT NULL UNIQUE,
     senha TEXT NOT NULL,
     is_admin BOOLEAN DEFAULT FALSE,
+    role VARCHAR(20) NOT NULL DEFAULT 'atendente',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Migração idempotente: garante a coluna "role" em bancos que já tinham a tabela usuarios
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'atendente';
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'chk_usuarios_role'
+    ) THEN
+        ALTER TABLE usuarios ADD CONSTRAINT chk_usuarios_role CHECK (role IN (
+            'super_admin','admin_locadora','gerente','atendente',
+            'financeiro','estoquista','tecnico','entregador','vendedor'
+        ));
+    END IF;
+END$$;
 
 -- ====
 -- Clientes

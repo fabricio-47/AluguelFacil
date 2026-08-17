@@ -1,0 +1,65 @@
+{% extends "base_admin_plataforma.html" %}
+{% block title %}Nova Empresa — Admin da Plataforma{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>Nova Empresa</h2>
+  <a href="{{ url_for('admin_plataforma.dashboard') }}" class="btn btn-outline-secondary">
+    <i class="fa-solid fa-arrow-left me-1"></i> Voltar
+  </a>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <form method="post" action="{{ url_for('admin_plataforma.nova_empresa') }}">
+      <h5>Dados da empresa</h5>
+      <div class="row g-2 mb-4">
+        <div class="col-md-6">
+          <label class="form-label">Nome da empresa</label>
+          <input type="text" name="nome" class="form-control" required>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Plano</label>
+          <select name="plano" class="form-select" required>
+            {% for p in planos %}
+            <option value="{{ p }}">{{ p }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Limite usuários</label>
+          <input type="number" name="limite_usuarios" class="form-control" placeholder="sem limite">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Limite equipamentos</label>
+          <input type="number" name="limite_equipamentos" class="form-control" placeholder="sem limite">
+        </div>
+        <div class="col-md-2 mt-2">
+          <label class="form-label">Limite filiais</label>
+          <input type="number" name="limite_filiais" class="form-control" placeholder="sem limite">
+        </div>
+      </div>
+
+      <h5>Administrador inicial da empresa</h5>
+      <p class="text-muted small">Sem um usuário, ninguém consegue logar na empresa recém-criada.</p>
+      <div class="row g-2">
+        <div class="col-md-4">
+          <label class="form-label">Username</label>
+          <input type="text" name="admin_username" class="form-control" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">E-mail</label>
+          <input type="email" name="admin_email" class="form-control" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Senha</label>
+          <input type="password" name="admin_senha" class="form-control" minlength="6" required>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary mt-4">
+        <i class="fa fa-plus me-1"></i> Criar Empresa
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

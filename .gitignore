@@ -35,7 +35,8 @@ Thumbs.db
 .env
 .env.*
 
-# Pastas de uploads
+# Pastas de uploads (documentos/imagens de clientes — nunca versionar)
+uploads/
 uploads_motos/
 uploads_contratos/
 uploads_habilitacoes/

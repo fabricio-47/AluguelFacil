@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Documento — {{ equipamento.nome }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>Documento — {{ equipamento.nome }} {% if equipamento.codigo_interno %}({{ equipamento.codigo_interno }}){% endif %}</h2>
+  <a href="{{ url_for('equipamentos.listar_equipamentos') }}" class="btn btn-outline-secondary">
+    <i class="fa-solid fa-arrow-left me-1"></i> Voltar
+  </a>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-header bg-primary text-white">
+    <i class="fa-solid fa-file-lines me-1"></i> Gerenciar Documento
+  </div>
+  <div class="card-body">
+
+    <!-- Documento Existente -->
+    {% if equipamento.documento_arquivo %}
+      <div class="mb-3">
+        <label class="form-label d-block">Documento atual</label>
+        {% set arquivo = equipamento.documento_arquivo %}
+        {% if arquivo and '.pdf' in arquivo|lower %}
+          <a href="{{ url_for('equipamentos.serve_documento_equipamento', filename=arquivo) }}"
+            target="_blank" class="btn btn-outline-primary btn-sm me-2" title="Ver PDF">
+            <i class="fa-solid fa-file-pdf me-1"></i> Ver PDF
+          </a>
+        {% else %}
+          <div class="mb-2">
+            <img src="{{ url_for('equipamentos.serve_documento_equipamento', filename=arquivo) }}"
+                class="img-fluid rounded border" style="max-width: 520px;" alt="Documento do equipamento">
+          </div>
+          <a href="{{ url_for('equipamentos.serve_documento_equipamento', filename=arquivo) }}"
+            target="_blank" class="btn btn-outline-primary btn-sm" title="Abrir em nova aba">
+            <i class="fa-solid fa-up-right-from-square me-1"></i> Abrir em nova aba
+          </a>
+        {% endif %}
+      </div>
+
+      <form method="post" action="{{ url_for('equipamentos.excluir_documento_equipamento', equipamento_id=equipamento.id) }}"
+            onsubmit="return confirm('Tem certeza que deseja excluir o documento atual?')">
+        <button type="submit" class="btn btn-danger btn-sm">
+          <i class="fa-solid fa-trash me-1"></i> Excluir Documento
+        </button>
+      </form>
+      <hr>
+    {% else %}
+      <p class="text-muted">Nenhum documento anexado para este equipamento.</p>
+      <hr>
+    {% endif %}
+
+    <!-- Upload de Documento -->
+    <h5 class="mb-3"><i class="fa-solid fa-upload me-1"></i> Anexar/Atualizar Documento</h5>
+    <form method="post" enctype="multipart/form-data">
+      <div class="mb-3">
+        <label class="form-label">Selecionar Documento (PDF/JPG/PNG)</label>
+        <input type="file" name="documento" class="form-control" accept=".pdf,.jpg,.jpeg,.png" required>
+        <small class="text-muted">Arquivos suportados: PDF, JPG, JPEG, PNG</small>
+      </div>
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-success">
+          <i class="fa-solid fa-cloud-arrow-up me-1"></i> Enviar Documento
+        </button>
+        <a href="{{ url_for('equipamentos.listar_equipamentos') }}" class="btn btn-secondary">
+          <i class="fa-solid fa-xmark me-1"></i> Cancelar
+        </a>
+      </div>
+    </form>
+
+  </div>
+</div>
+{% endblock %}

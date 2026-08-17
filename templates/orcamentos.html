@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% block title %}Orçamentos{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>Orçamentos</h2>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header bg-primary text-white">
+    <i class="fa-solid fa-file-invoice-dollar me-1"></i> Novo Orçamento
+  </div>
+  <div class="card-body">
+    <form method="post" action="{{ url_for('orcamentos.listar_orcamentos') }}" id="form-orcamento">
+      <div class="row g-2 mb-3">
+        <div class="col-md-4">
+          <label class="form-label">Cliente</label>
+          <select name="cliente_id" class="form-select" required>
+            <option value="">Selecione</option>
+            {% for c in clientes %}
+            <option value="{{ c.id }}">{{ c.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Frete (R$)</label>
+          <input type="number" step="0.01" min="0" name="frete" class="form-control" value="0">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Validade</label>
+          <input type="date" name="validade" class="form-control">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Observações</label>
+          <input type="text" name="observacoes" class="form-control">
+        </div>
+      </div>
+
+      <h6>Itens do orçamento</h6>
+      <table class="table table-sm" id="tabela-itens">
+        <thead>
+          <tr>
+            <th>Equipamento</th>
+            <th style="width:90px">Qtd</th>
+            <th style="width:120px">Período (dias)</th>
+            <th style="width:130px">Frequência</th>
+            <th style="width:130px">Valor unit. (R$)</th>
+            <th style="width:120px">Desconto (R$)</th>
+            <th style="width:40px"></th>
+          </tr>
+        </thead>
+        <tbody id="itens-body"></tbody>
+      </table>
+      <button type="button" class="btn btn-sm btn-outline-secondary mb-3" id="btn-add-item">
+        <i class="fa-solid fa-plus me-1"></i> Adicionar item
+      </button>
+
+      <div>
+        <button type="submit" class="btn btn-primary">
+          <i class="fa fa-save me-1"></i> Salvar Orçamento
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header bg-dark text-white">
+    <i class="fa-solid fa-list me-1"></i> Lista de Orçamentos
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-striped mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>#</th>
+            <th>Cliente</th>
+            <th>Status</th>
+            <th>Valor total</th>
+            <th>Validade</th>
+            <th>Criado por</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for o in orcamentos %}
+          <tr>
+            <td>#{{ o.id }}</td>
+            <td>{{ o.cliente_nome }}</td>
+            <td><span class="badge bg-secondary">{{ o.status }}</span></td>
+            <td>R$ {{ "%.2f"|format(o.valor_total or 0) }}</td>
+            <td>{{ o.validade or '–' }}</td>
+            <td>{{ o.criado_por_nome or '–' }}</td>
+            <td>
+              <a href="{{ url_for('orcamentos.detalhe_orcamento', id=o.id) }}" class="btn btn-sm btn-outline-primary">
+                Detalhes
+              </a>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="text-center text-muted">Nenhum orçamento encontrado.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% block extra_scripts %}
+<script>
+  const EQUIPAMENTOS = {{ equipamentos | tojson }};
+
+  function novaLinhaItem() {
+    const tr = document.createElement('tr');
+    const opcoesEquip = EQUIPAMENTOS.map(e =>
+      `<option value="${e.id}" data-semanal="${e.valor_semanal ?? ''}" data-mensal="${e.valor_mensal ?? ''}">${e.nome}${e.modelo ? ' — ' + e.modelo : ''}</option>`
+    ).join('');
+
+    tr.innerHTML = `
+      <td>
+        <select name="item_equipamento_id" class="form-select form-select-sm" required>
+          <option value="">Selecione</option>
+          ${opcoesEquip}
+        </select>
+      </td>
+      <td><input type="number" name="item_quantidade" class="form-control form-control-sm" value="1" min="1"></td>
+      <td><input type="number" name="item_periodo_dias" class="form-control form-control-sm" min="1"></td>
+      <td>
+        <select name="item_frequencia_pagamento" class="form-select form-select-sm">
+          <option value="WEEKLY">Semanal</option>
+          <option value="MONTHLY">Mensal</option>
+        </select>
+      </td>
+      <td><input type="number" step="0.01" min="0" name="item_valor_unitario" class="form-control form-control-sm" required></td>
+      <td><input type="number" step="0.01" min="0" name="item_desconto" class="form-control form-control-sm" value="0"></td>
+      <td><button type="button" class="btn btn-sm btn-outline-danger btn-remove-item"><i class="fa fa-trash"></i></button></td>
+    `;
+
+    const selectEquip = tr.querySelector('select[name="item_equipamento_id"]');
+    const inputValor = tr.querySelector('input[name="item_valor_unitario"]');
+    const selectFreq = tr.querySelector('select[name="item_frequencia_pagamento"]');
+
+    function preencherValorSugerido() {
+      const opt = selectEquip.selectedOptions[0];
+      if (!opt || !opt.value) return;
+      const sugestao = selectFreq.value === 'WEEKLY' ? opt.dataset.semanal : opt.dataset.mensal;
+      if (sugestao) inputValor.value = sugestao;
+    }
+    selectEquip.addEventListener('change', preencherValorSugerido);
+    selectFreq.addEventListener('change', preencherValorSugerido);
+    tr.querySelector('.btn-remove-item').addEventListener('click', () => tr.remove());
+
+    return tr;
+  }
+
+  document.getElementById('btn-add-item').addEventListener('click', () => {
+    document.getElementById('itens-body').appendChild(novaLinhaItem());
+  });
+
+  // Começa com uma linha já pronta pra preencher.
+  document.getElementById('itens-body').appendChild(novaLinhaItem());
+</script>
+{% endblock %}
+{% endblock %}

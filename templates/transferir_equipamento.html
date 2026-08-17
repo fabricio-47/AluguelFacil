@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Transferir Equipamento{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>Transferir Equipamento de Filial</h2>
+  <a href="{{ url_for('equipamentos.editar_equipamento', id=equipamento.id) }}" class="btn btn-outline-secondary">
+    <i class="fa-solid fa-arrow-left me-1"></i> Voltar
+  </a>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-header bg-primary text-white">
+    <i class="fa-solid fa-right-left me-1"></i>
+    {{ equipamento.nome }}{% if equipamento.codigo_interno %} ({{ equipamento.codigo_interno }}){% endif %}
+  </div>
+  <div class="card-body">
+    <p><strong>Filial atual:</strong> {{ equipamento.filial_atual_nome or 'Sem filial' }}</p>
+
+    <form method="post">
+      <div class="mb-3">
+        <label class="form-label">Nova filial *</label>
+        <select name="branch_id" class="form-select" required>
+          <option value="">Selecione</option>
+          {% for filial in outras_filiais %}
+          <option value="{{ filial.id }}">{{ filial.nome }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Motivo (opcional)</label>
+        <input type="text" name="motivo" class="form-control">
+      </div>
+      <button class="btn btn-success">
+        <i class="fa-solid fa-right-left me-1"></i> Confirmar Transferência
+      </button>
+      <a href="{{ url_for('equipamentos.editar_equipamento', id=equipamento.id) }}" class="btn btn-secondary">Cancelar</a>
+    </form>
+
+    <small class="text-muted d-block mt-3">
+      Essa transferência fica registrada no histórico de movimentação do equipamento.
+    </small>
+  </div>
+</div>
+{% endblock %}

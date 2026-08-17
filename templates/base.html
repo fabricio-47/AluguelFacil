@@ -35,6 +35,14 @@
     </a>
     </li>
 
+    <!-- Mapa Operacional -->
+    <li class="nav-item">
+    <a class="nav-link {% if request.endpoint and request.endpoint.startswith('operacional.') %}active{% endif %}"
+    href="{{ url_for('operacional.mapa') }}">
+    <i class="fa-solid fa-map me-1"></i>Operacional
+    </a>
+    </li>
+
     <!-- Clientes -->
     <li class="nav-item">
     <a class="nav-link {% if request.endpoint and request.endpoint.startswith('clientes.') %}active{% endif %}"
@@ -43,12 +51,75 @@
     </a>
     </li>
 
-    <!-- Motos -->
+    <!-- Equipamentos -->
     <li class="nav-item">
-    <a class="nav-link {% if request.endpoint and request.endpoint.startswith('motos.') %}active{% endif %}"
-    href="{{ url_for('motos.listar_motos') }}">
-    <i class="fa-solid fa-motorcycle me-1"></i>Motos
+    <a class="nav-link {% if request.endpoint and request.endpoint.startswith('equipamentos.') %}active{% endif %}"
+    href="{{ url_for('equipamentos.listar_equipamentos') }}">
+    <i class="fa-solid fa-boxes-stacked me-1"></i>Equipamentos
     </a>
+    </li>
+
+    <!-- Manutenção -->
+    <li class="nav-item">
+    <a class="nav-link {% if request.endpoint and request.endpoint.startswith('manutencoes.') %}active{% endif %}"
+    href="{{ url_for('manutencoes.listar_manutencoes') }}">
+    <i class="fa-solid fa-screwdriver-wrench me-1"></i>Manutenção
+    </a>
+    </li>
+
+    <!-- Entregas -->
+    <li class="nav-item">
+    <a class="nav-link {% if request.endpoint and request.endpoint.startswith('entregas.') %}active{% endif %}"
+    href="{{ url_for('entregas.listar_entregas') }}">
+    <i class="fa-solid fa-truck me-1"></i>Entregas
+    </a>
+    </li>
+
+    <!-- Filiais -->
+    <li class="nav-item">
+    <a class="nav-link {% if request.endpoint and request.endpoint.startswith('filiais.') %}active{% endif %}"
+    href="{{ url_for('filiais.listar_filiais') }}">
+    <i class="fa-solid fa-building me-1"></i>Filiais
+    </a>
+    </li>
+
+    <!-- Relatórios -->
+    <li class="nav-item">
+    <a class="nav-link {% if request.endpoint and request.endpoint.startswith('relatorios.') %}active{% endif %}"
+    href="{{ url_for('relatorios.index') }}">
+    <i class="fa-solid fa-chart-column me-1"></i>Relatórios
+    </a>
+    </li>
+
+    <!-- Orçamentos -->
+    <li class="nav-item">
+    <a class="nav-link {% if request.endpoint and request.endpoint.startswith('orcamentos.') %}active{% endif %}"
+    href="{{ url_for('orcamentos.listar_orcamentos') }}">
+    <i class="fa-solid fa-file-invoice-dollar me-1"></i>Orçamentos
+    </a>
+    </li>
+
+    <!-- CRM -->
+    <li class="nav-item dropdown">
+    <a class="nav-link dropdown-toggle
+    {% if request.endpoint and request.endpoint.startswith('crm.') %}active{% endif %}"
+    href="#" id="crmDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+    <i class="fa-solid fa-people-arrows me-1"></i>CRM
+    </a>
+    <ul class="dropdown-menu">
+    <li>
+    <a class="dropdown-item {% if request.endpoint == 'crm.pipeline' %}active{% endif %}"
+    href="{{ url_for('crm.pipeline') }}">
+    Pipeline
+    </a>
+    </li>
+    <li>
+    <a class="dropdown-item {% if request.endpoint == 'crm.tarefas' %}active{% endif %}"
+    href="{{ url_for('crm.tarefas') }}">
+    Tarefas
+    </a>
+    </li>
+    </ul>
     </li>
 
     <!-- Locações -->
@@ -72,6 +143,57 @@
     </a>
     </li>
     </ul>
+    </li>
+
+    <!-- Financeiro -->
+    <li class="nav-item dropdown">
+    <a class="nav-link dropdown-toggle
+    {% if request.endpoint and request.endpoint.startswith('financeiro.') %}active{% endif %}"
+    href="#" id="financeiroDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+    <i class="fa-solid fa-sack-dollar me-1"></i>Financeiro
+    </a>
+    <ul class="dropdown-menu">
+    <li>
+    <a class="dropdown-item {% if request.endpoint == 'financeiro.home' %}active{% endif %}"
+    href="{{ url_for('financeiro.home') }}">
+    Visão Geral
+    </a>
+    </li>
+    <li>
+    <a class="dropdown-item {% if request.endpoint and request.endpoint.startswith('financeiro.') and 'despesa' in request.endpoint %}active{% endif %}"
+    href="{{ url_for('financeiro.listar_despesas') }}">
+    Despesas
+    </a>
+    </li>
+    <li>
+    <a class="dropdown-item {% if request.endpoint == 'financeiro.fluxo_caixa' %}active{% endif %}"
+    href="{{ url_for('financeiro.fluxo_caixa') }}">
+    Fluxo de Caixa
+    </a>
+    </li>
+    <li>
+    <a class="dropdown-item {% if request.endpoint == 'financeiro.config_multas' %}active{% endif %}"
+    href="{{ url_for('financeiro.config_multas') }}">
+    Config. Multas
+    </a>
+    </li>
+    </ul>
+    </li>
+
+    <!-- Usuários -->
+    <li class="nav-item">
+    <a class="nav-link {% if request.endpoint and request.endpoint.startswith('usuarios.') %}active{% endif %}"
+    href="{{ url_for('usuarios.listar_usuarios') }}">
+    <i class="fa-solid fa-users-gear me-1"></i>Usuários
+    </a>
+    </li>
+
+    <!-- Assistente -->
+    <li class="nav-item">
+    <a class="nav-link {% if request.endpoint and request.endpoint.startswith('assistente.') %}active{% endif %}"
+    href="{{ url_for('assistente.chat') }}">
+    <i class="fa-solid fa-robot me-1"></i>Assistente
+    </a>
     </li>
     </ul>
 

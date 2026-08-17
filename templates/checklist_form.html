@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Checklist de {{ 'Entrega' if tipo == 'entrega' else 'Devolução' }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>Checklist de {{ 'Entrega' if tipo == 'entrega' else 'Devolução' }} — Locação #{{ locacao.id }}</h2>
+  <a href="{{ url_for('locacoes.listar_locacoes') }}" class="btn btn-outline-secondary">
+    <i class="fa-solid fa-arrow-left me-1"></i> Voltar
+  </a>
+</div>
+
+{% if tipo == 'devolucao' %}
+<div class="alert alert-warning">
+  <i class="fa-solid fa-triangle-exclamation me-1"></i>
+  Ao salvar este checklist, a locação é finalizada automaticamente (assinatura cancelada no Asaas e equipamento liberado).
+</div>
+{% endif %}
+
+<div class="card shadow-sm">
+  <div class="card-header bg-primary text-white">
+    <i class="fa-solid fa-clipboard-check me-1"></i>
+    {{ locacao.equipamento_nome }}{% if locacao.codigo_interno %} ({{ locacao.codigo_interno }}){% endif %}
+    — Cliente: {{ locacao.cliente_nome }}
+  </div>
+  <div class="card-body">
+    <form method="post">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label">Estado geral *</label>
+          <select name="estado_geral" class="form-select" required>
+            <option value="">Selecione</option>
+            {% for estado in estados %}
+            <option value="{{ estado }}">{{ estado }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-8">
+          <label class="form-label">Acessórios enviados</label>
+          <input type="text" name="acessorios_enviados" class="form-control" placeholder="Capacete, cadeado, manual...">
+        </div>
+        <div class="col-md-12">
+          <label class="form-label">Observações</label>
+          <textarea name="observacoes" class="form-control"></textarea>
+        </div>
+        <div class="col-md-12">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" value="1" id="confirmado_pelo_cliente" name="confirmado_pelo_cliente">
+            <label class="form-check-label" for="confirmado_pelo_cliente">Cliente confirmou/assinou este checklist</label>
+          </div>
+        </div>
+        <div class="col-12">
+          {% with campo_id=tipo, nome_sugerido=locacao.cliente_nome %}
+          {% include "_assinatura_pad.html" %}
+          {% endwith %}
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <button class="btn btn-success" id="btn-salvar-checklist">
+          <i class="fa-solid fa-save me-1"></i> Salvar Checklist
+        </button>
+      </div>
+    </form>
+
+    <script>
+    document.getElementById("btn-salvar-checklist").closest("form").addEventListener("submit", function (ev) {
+      var pad = window["padAssinatura_{{ tipo }}"];
+      if (!pad || pad.isEmpty()) {
+        ev.preventDefault();
+        alert("A assinatura do checklist é obrigatória.");
+        return;
+      }
+      document.getElementById("input_assinatura_{{ tipo }}").value = pad.toDataURL("image/png");
+    });
+    </script>
+
+    <small class="text-muted d-block mt-3">
+      Depois de salvar, você pode anexar fotos deste checklist na tela de comparação.
+    </small>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Fluxo de Caixa{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>Fluxo de Caixa</h2>
+  <a href="{{ url_for('financeiro.listar_despesas') }}" class="btn btn-outline-secondary">
+    <i class="fa-solid fa-file-invoice-dollar me-1"></i> Despesas
+  </a>
+</div>
+
+<div class="card mb-4">
+  <div class="card-body d-flex flex-wrap gap-2 align-items-center">
+    <div class="btn-group">
+      <a class="btn btn-outline-dark {% if periodo == 'hoje' %}active{% endif %}"
+         href="{{ url_for('financeiro.fluxo_caixa', periodo='hoje') }}">Hoje</a>
+      <a class="btn btn-outline-dark {% if periodo == 'semana' %}active{% endif %}"
+         href="{{ url_for('financeiro.fluxo_caixa', periodo='semana') }}">Semana</a>
+      <a class="btn btn-outline-dark {% if periodo == 'mes' %}active{% endif %}"
+         href="{{ url_for('financeiro.fluxo_caixa', periodo='mes') }}">Mês</a>
+      <a class="btn btn-outline-dark {% if periodo == 'ano' %}active{% endif %}"
+         href="{{ url_for('financeiro.fluxo_caixa', periodo='ano') }}">Ano</a>
+    </div>
+
+    <form method="get" action="{{ url_for('financeiro.fluxo_caixa') }}" class="d-flex gap-2 align-items-center ms-2">
+      <input type="hidden" name="periodo" value="custom">
+      <input type="date" name="inicio" class="form-control" value="{{ data_inicio }}">
+      <span>até</span>
+      <input type="date" name="fim" class="form-control" value="{{ data_fim }}">
+      <button type="submit" class="btn btn-outline-primary">Aplicar período customizado</button>
+    </form>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card text-white bg-success shadow-sm h-100">
+      <div class="card-body">
+        <h6 class="card-subtitle mb-1">Entradas no período</h6>
+        <div class="display-6">R$ {{ "%.2f"|format(total_entradas) }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card text-white bg-danger shadow-sm h-100">
+      <div class="card-body">
+        <h6 class="card-subtitle mb-1">Saídas no período</h6>
+        <div class="display-6">R$ {{ "%.2f"|format(total_saidas) }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card text-white {% if saldo >= 0 %}bg-primary{% else %}bg-dark{% endif %} shadow-sm h-100">
+      <div class="card-body">
+        <h6 class="card-subtitle mb-1">Saldo do período</h6>
+        <div class="display-6">R$ {{ "%.2f"|format(saldo) }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header bg-dark text-white">
+    <i class="fa-solid fa-list me-1"></i> Movimentos ({{ data_inicio }} a {{ data_fim }})
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-striped mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Data</th>
+            <th>Tipo</th>
+            <th>Descrição</th>
+            <th class="text-end">Valor</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in movimentos %}
+          <tr>
+            <td>{{ m.data.strftime('%d/%m/%Y') if m.data else '-' }}</td>
+            <td>
+              {% if m.tipo == 'entrada' %}
+                <span class="badge bg-success">Entrada</span>
+              {% else %}
+                <span class="badge bg-danger">Saída</span>
+              {% endif %}
+            </td>
+            <td>{{ m.descricao }}</td>
+            <td class="text-end">R$ {{ "%.2f"|format(m.valor) }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="4" class="text-center text-muted">Nenhum movimento no período selecionado.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

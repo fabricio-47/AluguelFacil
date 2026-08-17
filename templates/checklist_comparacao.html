@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Checklist — Locação #{{ locacao.id }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>Checklist — Locação #{{ locacao.id }}</h2>
+  <a href="{{ url_for('locacoes.listar_locacoes') }}" class="btn btn-outline-secondary">
+    <i class="fa-solid fa-arrow-left me-1"></i> Voltar
+  </a>
+</div>
+
+<p class="text-muted">
+  {{ locacao.equipamento_nome }}{% if locacao.codigo_interno %} ({{ locacao.codigo_interno }}){% endif %}
+  — Cliente: {{ locacao.cliente_nome }}
+</p>
+
+{% if piorou %}
+<div class="alert alert-danger">
+  <i class="fa-solid fa-triangle-exclamation me-1"></i>
+  O estado geral do equipamento piorou entre a entrega e a devolução.
+</div>
+{% endif %}
+
+<div class="row g-3">
+  {% for tipo, checklist in [('entrega', entrega), ('devolucao', devolucao)] %}
+  <div class="col-md-6">
+    <div class="card shadow-sm h-100">
+      <div class="card-header {% if tipo == 'entrega' %}bg-primary{% else %}bg-dark{% endif %} text-white">
+        <i class="fa-solid fa-clipboard-check me-1"></i> {{ 'Entrega' if tipo == 'entrega' else 'Devolução' }}
+      </div>
+      <div class="card-body">
+        {% if checklist %}
+          <p>
+            <strong>Estado geral:</strong>
+            <span class="badge {% if piorou and tipo == 'devolucao' %}bg-danger{% else %}bg-secondary{% endif %}">
+              {{ checklist.estado_geral }}
+            </span>
+          </p>
+          <p><strong>Acessórios enviados:</strong> {{ checklist.acessorios_enviados or '–' }}</p>
+          <p><strong>Observações:</strong> {{ checklist.observacoes or '–' }}</p>
+          <p><strong>Confirmado pelo cliente:</strong> {{ 'Sim' if checklist.confirmado_pelo_cliente else 'Não' }}</p>
+          <p class="text-muted"><small>Criado em {{ checklist.criado_em }}</small></p>
+
+          <hr>
+          <h6>Assinatura</h6>
+          {% if checklist.assinatura %}
+          <img src="{{ url_for('assinaturas.serve_assinatura', filename=checklist.assinatura.assinatura_imagem) }}"
+               style="max-width:250px; border:1px solid #ddd;" class="d-block mb-1" alt="Assinatura">
+          <p class="mb-1"><strong>{{ checklist.assinatura.nome_assinante }}</strong></p>
+          <p class="text-muted small">
+            Assinado eletronicamente em {{ checklist.assinatura.data_hora }} pelo IP {{ checklist.assinatura.ip_address }}.
+          </p>
+          {% else %}
+          <p class="text-muted">Sem assinatura registrada.</p>
+          {% endif %}
+
+          <hr>
+          <h6>Fotos</h6>
+          <div class="d-flex flex-wrap gap-2 mb-3">
+            {% for foto in checklist.fotos %}
+              <img src="{{ url_for('checklists.serve_foto', filename=foto.arquivo) }}" class="img-thumbnail" style="max-height:100px;">
+            {% else %}
+              <span class="text-muted">Nenhuma foto anexada.</span>
+            {% endfor %}
+          </div>
+          <form method="post" action="{{ url_for('checklists.upload_fotos', checklist_id=checklist.id) }}" enctype="multipart/form-data">
+            <div class="input-group">
+              <input type="file" name="fotos" class="form-control" accept=".jpg,.jpeg,.png" multiple>
+              <button class="btn btn-outline-primary" type="submit">Anexar</button>
+            </div>
+          </form>
+        {% else %}
+          <p class="text-muted mb-3">Checklist de {{ 'entrega' if tipo == 'entrega' else 'devolução' }} ainda não preenchido.</p>
+          <a href="{{ url_for('checklists.novo', locacao_id=locacao.id, tipo=tipo) }}" class="btn btn-outline-primary btn-sm">
+            Preencher agora
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

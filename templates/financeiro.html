@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Dashboard Financeiro{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>Dashboard Financeiro</h2>
+  <div class="btn-group">
+    <a href="{{ url_for('financeiro.listar_despesas') }}" class="btn btn-outline-secondary">
+      <i class="fa-solid fa-file-invoice-dollar me-1"></i> Despesas
+    </a>
+    <a href="{{ url_for('financeiro.fluxo_caixa') }}" class="btn btn-outline-secondary">
+      <i class="fa-solid fa-money-bill-transfer me-1"></i> Fluxo de Caixa
+    </a>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-3">
+    <div class="card text-white bg-success shadow-sm h-100">
+      <div class="card-body">
+        <h6 class="card-subtitle mb-1">Faturamento do mês</h6>
+        <div class="display-6">R$ {{ "%.2f"|format(faturamento_mes) }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-dark bg-warning shadow-sm h-100">
+      <div class="card-body">
+        <h6 class="card-subtitle mb-1">Valor a receber</h6>
+        <div class="display-6">R$ {{ "%.2f"|format(valor_a_receber) }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-white bg-danger shadow-sm h-100">
+      <div class="card-body">
+        <h6 class="card-subtitle mb-1">Despesas do mês</h6>
+        <div class="display-6">R$ {{ "%.2f"|format(despesas_mes) }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-white {% if saldo_projetado >= 0 %}bg-primary{% else %}bg-dark{% endif %} shadow-sm h-100">
+      <div class="card-body">
+        <h6 class="card-subtitle mb-1">Saldo projetado do mês</h6>
+        <div class="display-6">R$ {{ "%.2f"|format(saldo_projetado) }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="text-muted mt-3">
+  Saldo projetado = faturamento já recebido no mês + parcelas a receber que vencem neste mês − despesas do mês (pagas + pendentes, por vencimento).
+</p>
+{% endblock %}

@@ -50,6 +50,41 @@
 
   <hr>
 
+  <h4>Assinatura do Contrato</h4>
+  {% if assinatura_contrato %}
+  <div class="card mb-3" style="max-width:400px;">
+    <div class="card-body">
+      <img src="{{ url_for('assinaturas.serve_assinatura', filename=assinatura_contrato.assinatura_imagem) }}"
+           style="max-width:100%; border:1px solid #ddd;" alt="Assinatura">
+      <p class="mb-1 mt-2"><strong>{{ assinatura_contrato.nome_assinante }}</strong></p>
+      <p class="text-muted small mb-0">
+        Assinado eletronicamente em {{ assinatura_contrato.data_hora }} pelo IP {{ assinatura_contrato.ip_address }}.
+      </p>
+    </div>
+  </div>
+  {% else %}
+  <p class="text-muted">Sem assinatura registrada pra este contrato.</p>
+  {% endif %}
+  <hr>
+
+  {% if multa %}
+  <div class="alert {% if multa.final %}alert-secondary{% else %}alert-danger{% endif %}">
+    <h5><i class="fa-solid fa-triangle-exclamation me-1"></i>
+      {% if multa.final %}Atraso registrado no fechamento{% else %}Locação em atraso{% endif %}
+    </h5>
+    <p class="mb-1"><strong>Dias de atraso:</strong> {{ multa.dias_atraso }}</p>
+    <p class="mb-1"><strong>Valor da locação:</strong> R$ {{ "%.2f"|format(locacao.valor or 0) }}</p>
+    <p class="mb-1"><strong>Multa por atraso:</strong> R$ {{ "%.2f"|format(multa.valor_multa_total) }}</p>
+    <p class="mb-1"><strong>Total (locação + multa):</strong>
+      R$ {{ "%.2f"|format((locacao.valor or 0)|float + multa.valor_multa_total) }}
+    </p>
+    {% if multa.aviso %}
+      <p class="mb-0 text-muted"><small>{{ multa.aviso }}</small></p>
+    {% endif %}
+  </div>
+  <hr>
+  {% endif %}
+
   <!-- Listagem dos boletos vinculados -->
   <h4>Boletos desta Locação</h4>
   <table class="table table-striped mt-3">
