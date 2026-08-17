@@ -20,10 +20,18 @@ DOCUMENTO_CAMPOS = {
     "foto_cliente": "foto_cliente_arquivo",
 }
 ALLOWED_IMG_EXT = {"png", "jpg", "jpeg"}
+# Só "foto_cliente" aceita PDF além de imagem (ex: retrato digitalizado).
+EXTENSOES_POR_CAMPO = {
+    "doc_frente": ALLOWED_IMG_EXT,
+    "doc_verso": ALLOWED_IMG_EXT,
+    "comprovante_residencia": ALLOWED_IMG_EXT,
+    "foto_cliente": ALLOWED_IMG_EXT | {"pdf"},
+}
 
 
-def _allowed_img(filename):
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_IMG_EXT
+def _allowed_img(filename, campo):
+    permitidas = EXTENSOES_POR_CAMPO.get(campo, ALLOWED_IMG_EXT)
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in permitidas
 
 
 def _unique_filename(cliente_id, filename):
@@ -134,7 +142,7 @@ def listar_clientes():
 
             for campo_form, coluna in DOCUMENTO_CAMPOS.items():
                 f = request.files.get(campo_form)
-                if f and f.filename and _allowed_img(f.filename):
+                if f and f.filename and _allowed_img(f.filename, campo_form):
                     filename = _unique_filename(novo_cliente_id, secure_filename(f.filename))
                     f.save(os.path.join(_pasta_documentos(), filename))
                     cur.execute(f"UPDATE clientes SET {coluna}=%s WHERE id=%s", (filename, novo_cliente_id))
@@ -193,7 +201,7 @@ def editar_cliente(id):
 
             for campo_form, coluna in DOCUMENTO_CAMPOS.items():
                 f = request.files.get(campo_form)
-                if f and f.filename and _allowed_img(f.filename):
+                if f and f.filename and _allowed_img(f.filename, campo_form):
                     _remover_arquivo(atuais[coluna])
                     filename = _unique_filename(id, secure_filename(f.filename))
                     f.save(os.path.join(_pasta_documentos(), filename))

@@ -75,13 +75,26 @@
         <label for="foto_cliente" class="form-label">Foto do cliente</label>
         <div id="foto_cliente_preview_box" class="border rounded d-flex align-items-center justify-content-center mb-2 text-muted" style="height: 160px;">
           {% if cliente.foto_cliente_arquivo %}
-            <img src="{{ url_for('clientes.uploaded_documento', filename=cliente.foto_cliente_arquivo) }}"
-                 class="img-fluid rounded" style="max-height: 160px;" alt="Foto do cliente">
+            {% if cliente.foto_cliente_arquivo.lower().endswith('.pdf') %}
+              <a href="{{ url_for('clientes.uploaded_documento', filename=cliente.foto_cliente_arquivo) }}" target="_blank">Ver PDF</a>
+            {% else %}
+              <img src="{{ url_for('clientes.uploaded_documento', filename=cliente.foto_cliente_arquivo) }}"
+                   class="img-fluid rounded" style="max-height: 160px;" alt="Foto do cliente">
+            {% endif %}
           {% else %}
             Sem foto
           {% endif %}
         </div>
-        <input type="file" class="form-control" id="foto_cliente" name="foto_cliente" accept=".png,.jpg,.jpeg" onchange="previewFotoCliente(this)">
+        <video id="foto_cliente_video" class="d-none w-100 rounded mb-2" autoplay playsinline></video>
+        <canvas id="foto_cliente_canvas" class="d-none"></canvas>
+        <input type="file" class="form-control mb-2" id="foto_cliente" name="foto_cliente" accept=".png,.jpg,.jpeg,.pdf" onchange="previewFotoCliente(this)">
+        <div id="foto_cliente_webcam_controls">
+          <button type="button" class="btn btn-outline-secondary btn-sm w-100" onclick="iniciarWebcamFotoCliente()">Usar webcam</button>
+        </div>
+        <div id="foto_cliente_webcam_captura_controls" class="d-none d-flex gap-1 mb-1">
+          <button type="button" class="btn btn-success btn-sm" onclick="capturarFotoCliente()">Capturar</button>
+          <button type="button" class="btn btn-outline-danger btn-sm" onclick="cancelarWebcamFotoCliente()">Cancelar</button>
+        </div>
         {% if cliente.foto_cliente_arquivo %}
           <button type="submit" form="excluir-foto_cliente" class="btn btn-sm btn-outline-danger mt-1">Excluir</button>
         {% endif %}
@@ -113,9 +126,64 @@
     var box = document.getElementById('foto_cliente_preview_box');
     if (!box) return;
     if (input.files && input.files[0]) {
-      var url = URL.createObjectURL(input.files[0]);
-      box.innerHTML = '<img src="' + url + '" class="img-fluid rounded" style="max-height: 160px;" alt="Foto do cliente">';
+      var file = input.files[0];
+      if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) {
+        box.innerHTML = '<span>PDF selecionado: ' + file.name + '</span>';
+      } else {
+        var url = URL.createObjectURL(file);
+        box.innerHTML = '<img src="' + url + '" class="img-fluid rounded" style="max-height: 160px;" alt="Foto do cliente">';
+      }
     }
+  }
+
+  var fotoClienteStream = null;
+
+  async function iniciarWebcamFotoCliente() {
+    var video = document.getElementById('foto_cliente_video');
+    var box = document.getElementById('foto_cliente_preview_box');
+    try {
+      fotoClienteStream = await navigator.mediaDevices.getUserMedia({ video: true });
+    } catch (e) {
+      alert('Não foi possível acessar a webcam: ' + e.message);
+      return;
+    }
+    video.srcObject = fotoClienteStream;
+    video.classList.remove('d-none');
+    box.classList.add('d-none');
+    document.getElementById('foto_cliente_webcam_controls').classList.add('d-none');
+    document.getElementById('foto_cliente_webcam_captura_controls').classList.remove('d-none');
+  }
+
+  function pararWebcamFotoCliente() {
+    if (fotoClienteStream) {
+      fotoClienteStream.getTracks().forEach(function(t) { t.stop(); });
+      fotoClienteStream = null;
+    }
+    document.getElementById('foto_cliente_video').classList.add('d-none');
+    document.getElementById('foto_cliente_preview_box').classList.remove('d-none');
+    document.getElementById('foto_cliente_webcam_controls').classList.remove('d-none');
+    document.getElementById('foto_cliente_webcam_captura_controls').classList.add('d-none');
+  }
+
+  function cancelarWebcamFotoCliente() {
+    pararWebcamFotoCliente();
+  }
+
+  function capturarFotoCliente() {
+    var video = document.getElementById('foto_cliente_video');
+    var canvas = document.getElementById('foto_cliente_canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob(function(blob) {
+      var file = new File([blob], 'webcam_foto_cliente.jpg', { type: 'image/jpeg' });
+      var dt = new DataTransfer();
+      dt.items.add(file);
+      var input = document.getElementById('foto_cliente');
+      input.files = dt.files;
+      previewFotoCliente(input);
+      pararWebcamFotoCliente();
+    }, 'image/jpeg', 0.9);
   }
 
   document.addEventListener('DOMContentLoaded', function() {
