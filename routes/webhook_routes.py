@@ -21,38 +21,35 @@ def asaas_webhook():
     conn = get_db_connection()
     cur = conn.cursor()
 
-    if not _authorized(request, cur):
-        cur.close()
-        conn.close()
-        abort(401)
-
     try:
-        data = request.get_json(force=True, silent=True) or {}
-    except Exception:
-        cur.close()
-        conn.close()
-        abort(400)
+        if not _authorized(request, cur):
+            abort(401)
 
-    event = data.get("event")
-    payment = data.get("payment") or {}
+        try:
+            data = request.get_json(force=True, silent=True) or {}
+        except Exception:
+            abort(400)
 
-    try:
-        if event in ("PAYMENT_CREATED", "PAYMENT_UPDATED"):
-            _upsert_boleto(cur, payment)
+        event = data.get("event")
+        payment = data.get("payment") or {}
 
-        elif event in ("PAYMENT_CONFIRMED", "PAYMENT_RECEIVED", "PAYMENT_RECEIVED_IN_CASH"):
-            _upsert_boleto(cur, payment)
-            _atualizar_agregado_locacao(cur, payment)
+        try:
+            if event in ("PAYMENT_CREATED", "PAYMENT_UPDATED"):
+                _upsert_boleto(cur, payment)
 
-        elif event in ("PAYMENT_OVERDUE", "PAYMENT_DELETED", "PAYMENT_CANCELED"):
-            _upsert_boleto(cur, payment)
-            _atualizar_agregado_locacao(cur, payment)
+            elif event in ("PAYMENT_CONFIRMED", "PAYMENT_RECEIVED", "PAYMENT_RECEIVED_IN_CASH"):
+                _upsert_boleto(cur, payment)
+                _atualizar_agregado_locacao(cur, payment)
 
-        conn.commit()
-    except Exception as e:
-        conn.rollback()
-        # Retornar 200 para Asaas não reenfileirar eternamente, mas logue em produção:
-        return {"ok": False, "error": str(e)}, 200
+            elif event in ("PAYMENT_OVERDUE", "PAYMENT_DELETED", "PAYMENT_CANCELED"):
+                _upsert_boleto(cur, payment)
+                _atualizar_agregado_locacao(cur, payment)
+
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            # Retornar 200 para Asaas não reenfileirar eternamente, mas logue em produção:
+            return {"ok": False, "error": str(e)}, 200
     finally:
         cur.close()
         conn.close()
