@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Configurações{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>Configurações</h2>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-header bg-primary text-white">
+    <i class="fa-solid fa-money-check-dollar me-1"></i> Integração com Asaas
+  </div>
+  <div class="card-body">
+    <form method="post">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Chave da API (Access Token)</label>
+          <input type="password" name="api_key" class="form-control"
+                 placeholder="{% if config and config.api_key_cifrada %}•••• chave configurada (deixe em branco pra manter){% else %}Cole aqui a API key da sua conta Asaas{% endif %}">
+          <small class="text-muted">Nunca exibida depois de salva — só é possível substituir.</small>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Webhook Secret</label>
+          <input type="password" name="webhook_secret" class="form-control"
+                 placeholder="{% if config and config.webhook_secret_cifrado %}•••• configurado (deixe em branco pra manter){% else %}Opcional — token que você define no painel do Asaas{% endif %}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Ambiente</label>
+          <select name="ambiente" class="form-select">
+            {% for a in ambientes %}
+            <option value="{{ a }}" {% if config and config.ambiente == a %}selected{% endif %}>
+              {{ "Sandbox (testes)" if a == "sandbox" else "Produção" }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <button class="btn btn-success">
+          <i class="fa-solid fa-save me-1"></i> Salvar Configuração
+        </button>
+      </div>
+    </form>
+
+    <small class="text-muted d-block mt-3">
+      Se nenhuma chave própria for configurada, o sistema usa a chave padrão da plataforma (se houver).
+    </small>
+  </div>
+</div>
+{% endblock %}

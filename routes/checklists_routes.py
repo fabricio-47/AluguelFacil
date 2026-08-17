@@ -165,6 +165,7 @@ def novo(locacao_id, tipo):
                 if not assinatura_existente:
                     executar_cancelamento_locacao(
                         cur, locacao_id, locacao["equipment_item_id"], locacao["asaas_subscription_id"],
+                        locacao["company_id"],
                     )
                 conn.commit()
                 flash("Checklist de devolução registrado e locação finalizada!", "success")
