@@ -188,6 +188,14 @@
     </a>
     </li>
 
+    <!-- Configurações -->
+    <li class="nav-item">
+    <a class="nav-link {% if request.endpoint and request.endpoint.startswith('configuracoes.') %}active{% endif %}"
+    href="{{ url_for('configuracoes.pagina_configuracoes') }}">
+    <i class="fa-solid fa-gear me-1"></i>Configurações
+    </a>
+    </li>
+
     <!-- Assistente -->
     <li class="nav-item">
     <a class="nav-link {% if request.endpoint and request.endpoint.startswith('assistente.') %}active{% endif %}"

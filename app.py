@@ -25,6 +25,7 @@ from routes.usuarios_routes import usuarios_bp
 from routes.admin_plataforma_routes import admin_plataforma_bp
 from routes.assinaturas_routes import assinaturas_bp
 from routes.assistente_routes import assistente_bp
+from routes.configuracoes_routes import configuracoes_bp
 
 # Inicialização
 app = Flask(__name__)
@@ -67,6 +68,7 @@ app.register_blueprint(usuarios_bp)
 app.register_blueprint(admin_plataforma_bp)
 app.register_blueprint(assinaturas_bp)
 app.register_blueprint(assistente_bp)
+app.register_blueprint(configuracoes_bp)
 
 # Criar pastas de upload logo na inicialização do app (Flask 3.x removeu before_first_request)
 upload_folder = app.config.get("UPLOAD_FOLDER", "uploads")
