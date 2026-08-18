@@ -181,10 +181,12 @@ LABEL_PERMISSAO = {
 ### Tela — nova seção dentro de `/configuracoes`
 
 Reaproveita a página já existente (`routes/configuracoes_routes.py`,
-`templates/configuracoes.html`) em vez de criar rota nova — adiciona uma
+`templates/configuracoes.html`) em vez de criar página nova — adiciona uma
 segunda `<div class="card">` "Permissões por Cargo" abaixo do card do Asaas,
-no mesmo template, mesmo form POST (campos com nomes diferentes, processados
-num bloco separado dentro da mesma view).
+no mesmo template. **Implementado com uma rota de POST dedicada**
+(`POST /configuracoes/permissoes`, form próprio) em vez de compartilhar o
+form/POST do Asaas — mantém as duas seções desacopladas (salvar permissões
+não depende de reenviar/validar os campos da Asaas, e vice-versa).
 
 - **GET**: busca todas as linhas de `permissoes_customizadas` da empresa
   (`WHERE company_id=%s`, sem filtro de role — traz o que tiver customizado).
@@ -192,8 +194,11 @@ num bloco separado dentro da mesma view).
   customizada se existir, senão `PERMISSOES_POR_ROLE[cargo]`) pra pré-marcar
   os checkboxes.
 - **Render**: uma grade — 6 colunas (cargos) × permissões agrupadas por área
-  (linhas), checkbox em cada célula, nome tipo
-  `perm__<cargo>__<permissao>` (ex: `perm__atendente__ver_locacoes`).
+  (linhas), checkbox em cada célula. **Implementado como
+  `name="perm__<cargo>"` com `value="<permissao>"`** (um campo multi-valor
+  por cargo, lido via `request.form.getlist(f"perm__{cargo}")`) em vez de um
+  nome por checkbox — é a forma idiomática de grupo de checkboxes em HTML e
+  o que faz `getlist` funcionar direto, sem precisar decompor nomes de campo.
 - **POST**: pra cada um dos 6 cargos, calcula o conjunto de permissões
   marcadas (via `request.form` — checkboxes ausentes = desmarcado) e faz
   `INSERT ... ON CONFLICT (company_id, role) DO UPDATE SET permissoes=...`
