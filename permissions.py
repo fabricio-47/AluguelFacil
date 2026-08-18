@@ -2,6 +2,8 @@ from functools import wraps
 
 from flask import flash, redirect, url_for
 from flask_login import current_user
+from flask import g
+from database import get_db_connection
 
 # ======================
 # Permissões conhecidas
@@ -66,6 +68,65 @@ PERMISSOES_POR_ROLE = {
     },
 }
 
+CARGOS_CUSTOMIZAVEIS = ("financeiro", "atendente", "vendedor", "tecnico", "estoquista", "entregador")
+
+# Só pra exibição na tela de Configurações — não muda nenhum comportamento
+# de autorização.
+GRUPOS_PERMISSOES = [
+    ("Financeiro", [VER_DASHBOARD_FINANCEIRO, VER_DESPESAS, GERENCIAR_DESPESAS, VER_RELATORIOS_FINANCEIROS]),
+    ("Locações", [VER_LOCACOES, CRIAR_LOCACAO, GERENCIAR_LOCACOES]),
+    ("Clientes", [VER_CLIENTES, GERENCIAR_CLIENTES]),
+    ("Equipamentos", [VER_EQUIPAMENTOS, GERENCIAR_EQUIPAMENTOS, ALTERAR_STATUS_EQUIPAMENTO]),
+    ("Manutenções", [VER_MANUTENCOES, GERENCIAR_MANUTENCOES]),
+    ("Filiais", [VER_FILIAIS, GERENCIAR_FILIAIS]),
+    ("Entregas", [VER_ENTREGAS, GERENCIAR_ENTREGAS, VER_MAPA_OPERACIONAL]),
+    ("Relatórios", [VER_RELATORIOS]),
+    ("Orçamentos", [VER_ORCAMENTOS, GERENCIAR_ORCAMENTOS]),
+    ("CRM / Pipeline", [VER_PIPELINE, GERENCIAR_PIPELINE]),
+    ("Usuários", [VER_USUARIOS, GERENCIAR_USUARIOS]),
+    ("Assistente de IA", [VER_ASSISTENTE]),
+]
+
+LABEL_PERMISSAO = {
+    VER_DASHBOARD_FINANCEIRO: "Ver dashboard financeiro",
+    VER_LOCACOES: "Ver locações",
+    CRIAR_LOCACAO: "Criar locação",
+    GERENCIAR_LOCACOES: "Editar/cancelar locações",
+    VER_CLIENTES: "Ver clientes",
+    GERENCIAR_CLIENTES: "Cadastrar/editar clientes",
+    VER_EQUIPAMENTOS: "Ver equipamentos",
+    GERENCIAR_EQUIPAMENTOS: "Cadastrar/editar equipamentos",
+    VER_DESPESAS: "Ver despesas",
+    GERENCIAR_DESPESAS: "Lançar/editar despesas",
+    VER_MANUTENCOES: "Ver manutenções",
+    GERENCIAR_MANUTENCOES: "Abrir/concluir manutenções",
+    VER_FILIAIS: "Ver filiais",
+    GERENCIAR_FILIAIS: "Cadastrar/editar filiais",
+    VER_ENTREGAS: "Ver entregas",
+    GERENCIAR_ENTREGAS: "Criar/atribuir entregas",
+    VER_MAPA_OPERACIONAL: "Ver mapa operacional",
+    VER_RELATORIOS: "Ver relatórios operacionais",
+    VER_RELATORIOS_FINANCEIROS: "Ver relatórios financeiros",
+    VER_ORCAMENTOS: "Ver orçamentos",
+    GERENCIAR_ORCAMENTOS: "Criar/aprovar orçamentos",
+    VER_PIPELINE: "Ver pipeline de vendas",
+    GERENCIAR_PIPELINE: "Mover etapa/criar tarefas do CRM",
+    VER_USUARIOS: "Ver usuários",
+    GERENCIAR_USUARIOS: "Cadastrar/editar usuários",
+    ALTERAR_STATUS_EQUIPAMENTO: "Mudar status de equipamento (QR Code)",
+    VER_ASSISTENTE: "Usar o assistente de IA",
+}
+
+_TODAS_PERMISSOES_EM_GRUPOS = {perm for _, perms in GRUPOS_PERMISSOES for perm in perms}
+_TODAS_PERMISSOES_EM_ROLES = {perm for perms in PERMISSOES_POR_ROLE.values() for perm in perms}
+assert _TODAS_PERMISSOES_EM_GRUPOS == set(LABEL_PERMISSAO.keys()), (
+    "GRUPOS_PERMISSOES e LABEL_PERMISSAO precisam cobrir exatamente as mesmas permissões"
+)
+assert _TODAS_PERMISSOES_EM_ROLES <= _TODAS_PERMISSOES_EM_GRUPOS, (
+    "Toda permissão usada em PERMISSOES_POR_ROLE precisa estar em GRUPOS_PERMISSOES, "
+    "senão ela desaparece silenciosamente na primeira vez que alguém salvar /configuracoes/permissoes"
+)
+
 # Ordem de preferência para decidir uma página segura pra onde mandar o usuário
 # (pós-login ou quando uma permissão é negada em outro lugar).
 _ROTA_POR_PERMISSAO = [
@@ -74,19 +135,49 @@ _ROTA_POR_PERMISSAO = [
     (VER_LOCACOES, "locacoes.listar_locacoes"),
     (VER_EQUIPAMENTOS, "equipamentos.listar_equipamentos"),
     (VER_CLIENTES, "clientes.listar_clientes"),
+    (VER_ENTREGAS, "entregas.listar_entregas"),
+    (VER_ORCAMENTOS, "orcamentos.listar_orcamentos"),
+    (VER_PIPELINE, "crm.pipeline"),
+    (VER_MANUTENCOES, "manutencoes.listar_manutencoes"),
+    (VER_DESPESAS, "financeiro.listar_despesas"),
 ]
 
 
-def _permissoes_do_role(role):
+def _permissoes_do_role(role, company_id):
     if role in ROLES_ACESSO_TOTAL:
-        return None  # None = coringa, libera qualquer permissão
-    return PERMISSOES_POR_ROLE.get(role, set())
+        return None  # None = coringa, libera qualquer permissão — sem consulta ao banco
+
+    cache_attr = f"_permissoes_cache_{role}_{company_id}"
+    if hasattr(g, cache_attr):
+        return getattr(g, cache_attr)
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "SELECT permissoes FROM permissoes_customizadas WHERE company_id=%s AND role=%s",
+            (company_id, role),
+        )
+        row = cur.fetchone()
+    finally:
+        cur.close()
+        conn.close()
+
+    if row is not None:
+        resultado = set(row["permissoes"])
+    else:
+        resultado = set(PERMISSOES_POR_ROLE.get(role, ()))
+
+    setattr(g, cache_attr, resultado)
+    return resultado
 
 
 def tem_permissao(permissao):
     if not current_user.is_authenticated:
         return False
-    permissoes = _permissoes_do_role(getattr(current_user, "role", None))
+    permissoes = _permissoes_do_role(
+        getattr(current_user, "role", None), getattr(current_user, "company_id", None)
+    )
     return permissoes is None or permissao in permissoes
 
 
@@ -101,6 +192,8 @@ def landing_url():
     for permissao, endpoint in _ROTA_POR_PERMISSAO:
         if tem_permissao(permissao):
             return url_for(endpoint)
+    if current_user.is_authenticated:
+        flash("Seu usuário está sem nenhuma permissão configurada. Fale com o administrador da sua empresa.", "warning")
     return url_for("auth.login")
 
 
