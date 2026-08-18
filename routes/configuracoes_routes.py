@@ -1,8 +1,10 @@
+import json
+
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 
 from database import get_db_connection
-from permissions import requer_role
+from permissions import requer_role, CARGOS_CUSTOMIZAVEIS, GRUPOS_PERMISSOES, LABEL_PERMISSAO, PERMISSOES_POR_ROLE
 from asaas_config import cifrar
 
 configuracoes_bp = Blueprint("configuracoes", __name__, url_prefix="/configuracoes")
@@ -58,6 +60,56 @@ def pagina_configuracoes():
 
     cur.execute("SELECT * FROM config_asaas WHERE company_id=%s", (current_user.company_id,))
     config = cur.fetchone()
+
+    cur.execute(
+        "SELECT role, permissoes FROM permissoes_customizadas WHERE company_id=%s",
+        (current_user.company_id,),
+    )
+    customizadas_por_cargo = {row["role"]: set(row["permissoes"]) for row in cur.fetchall()}
+
+    permissoes_efetivas = {
+        cargo: customizadas_por_cargo.get(cargo, PERMISSOES_POR_ROLE.get(cargo, set()))
+        for cargo in CARGOS_CUSTOMIZAVEIS
+    }
+
     cur.close()
     conn.close()
-    return render_template("configuracoes.html", config=config, ambientes=AMBIENTES_ASAAS)
+    return render_template(
+        "configuracoes.html",
+        config=config,
+        ambientes=AMBIENTES_ASAAS,
+        cargos=CARGOS_CUSTOMIZAVEIS,
+        grupos_permissoes=GRUPOS_PERMISSOES,
+        label_permissao=LABEL_PERMISSAO,
+        permissoes_efetivas=permissoes_efetivas,
+    )
+
+
+@configuracoes_bp.route("/permissoes", methods=["POST"])
+@login_required
+@requer_role("super_admin", "admin_locadora")
+def salvar_permissoes():
+    todas_permissoes = {perm for _, perms in GRUPOS_PERMISSOES for perm in perms}
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        for cargo in CARGOS_CUSTOMIZAVEIS:
+            marcadas = request.form.getlist(f"perm__{cargo}")
+            marcadas_validas = [p for p in marcadas if p in todas_permissoes]
+            cur.execute("""
+                INSERT INTO permissoes_customizadas (company_id, role, permissoes)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (company_id, role) DO UPDATE SET
+                    permissoes = EXCLUDED.permissoes
+            """, (current_user.company_id, cargo, json.dumps(marcadas_validas)))
+        conn.commit()
+        flash("Permissões salvas com sucesso!", "success")
+    except Exception as e:
+        conn.rollback()
+        flash(f"Erro ao salvar permissões: {e}", "danger")
+    finally:
+        cur.close()
+        conn.close()
+
+    return redirect(url_for("configuracoes.pagina_configuracoes"))
