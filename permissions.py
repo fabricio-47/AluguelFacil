@@ -138,13 +138,15 @@ def _permissoes_do_role(role, company_id):
 
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute(
-        "SELECT permissoes FROM permissoes_customizadas WHERE company_id=%s AND role=%s",
-        (company_id, role),
-    )
-    row = cur.fetchone()
-    cur.close()
-    conn.close()
+    try:
+        cur.execute(
+            "SELECT permissoes FROM permissoes_customizadas WHERE company_id=%s AND role=%s",
+            (company_id, role),
+        )
+        row = cur.fetchone()
+    finally:
+        cur.close()
+        conn.close()
 
     if row is not None:
         resultado = set(row["permissoes"])
