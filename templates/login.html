@@ -21,7 +21,7 @@
           {% endif %}
         {% endwith %}
 
-        <form method="post" action="{{ url_for('auth.login') }}" novalidate>
+        <form method="post" action="{{ url_for('auth.login') }}">
           {# suporte a redirect pós-login #}
           {% if request.args.get('next') %}
             <input type="hidden" name="next" value="{{ request.args.get('next') }}">
