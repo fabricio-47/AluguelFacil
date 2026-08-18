@@ -117,6 +117,16 @@ LABEL_PERMISSAO = {
     VER_ASSISTENTE: "Usar o assistente de IA",
 }
 
+_TODAS_PERMISSOES_EM_GRUPOS = {perm for _, perms in GRUPOS_PERMISSOES for perm in perms}
+_TODAS_PERMISSOES_EM_ROLES = {perm for perms in PERMISSOES_POR_ROLE.values() for perm in perms}
+assert _TODAS_PERMISSOES_EM_GRUPOS == set(LABEL_PERMISSAO.keys()), (
+    "GRUPOS_PERMISSOES e LABEL_PERMISSAO precisam cobrir exatamente as mesmas permissões"
+)
+assert _TODAS_PERMISSOES_EM_ROLES <= _TODAS_PERMISSOES_EM_GRUPOS, (
+    "Toda permissão usada em PERMISSOES_POR_ROLE precisa estar em GRUPOS_PERMISSOES, "
+    "senão ela desaparece silenciosamente na primeira vez que alguém salvar /configuracoes/permissoes"
+)
+
 # Ordem de preferência para decidir uma página segura pra onde mandar o usuário
 # (pós-login ou quando uma permissão é negada em outro lugar).
 _ROTA_POR_PERMISSAO = [
@@ -125,6 +135,11 @@ _ROTA_POR_PERMISSAO = [
     (VER_LOCACOES, "locacoes.listar_locacoes"),
     (VER_EQUIPAMENTOS, "equipamentos.listar_equipamentos"),
     (VER_CLIENTES, "clientes.listar_clientes"),
+    (VER_ENTREGAS, "entregas.listar_entregas"),
+    (VER_ORCAMENTOS, "orcamentos.listar_orcamentos"),
+    (VER_PIPELINE, "crm.pipeline"),
+    (VER_MANUTENCOES, "manutencoes.listar_manutencoes"),
+    (VER_DESPESAS, "financeiro.listar_despesas"),
 ]
 
 
@@ -151,7 +166,7 @@ def _permissoes_do_role(role, company_id):
     if row is not None:
         resultado = set(row["permissoes"])
     else:
-        resultado = PERMISSOES_POR_ROLE.get(role, set())
+        resultado = set(PERMISSOES_POR_ROLE.get(role, ()))
 
     setattr(g, cache_attr, resultado)
     return resultado
@@ -177,6 +192,8 @@ def landing_url():
     for permissao, endpoint in _ROTA_POR_PERMISSAO:
         if tem_permissao(permissao):
             return url_for(endpoint)
+    if current_user.is_authenticated:
+        flash("Seu usuário está sem nenhuma permissão configurada. Fale com o administrador da sua empresa.", "warning")
     return url_for("auth.login")
 
 

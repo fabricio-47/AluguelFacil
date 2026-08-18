@@ -68,7 +68,7 @@ def pagina_configuracoes():
     customizadas_por_cargo = {row["role"]: set(row["permissoes"]) for row in cur.fetchall()}
 
     permissoes_efetivas = {
-        cargo: customizadas_por_cargo.get(cargo, PERMISSOES_POR_ROLE.get(cargo, set()))
+        cargo: customizadas_por_cargo.get(cargo, set(PERMISSOES_POR_ROLE.get(cargo, ())))
         for cargo in CARGOS_CUSTOMIZAVEIS
     }
 
