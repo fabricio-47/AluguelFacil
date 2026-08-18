@@ -24,6 +24,12 @@
             <option value="{{ cliente.id }}">{{ cliente.nome }}</option>
             {% endfor %}
           </select>
+          <div id="aviso_comprovante_desatualizado" class="alert alert-warning mt-2 py-2 px-3 d-none" role="alert">
+            <i class="fa-solid fa-triangle-exclamation me-1"></i>
+            Este cliente está sem alugar há mais de 90 dias e precisa reenviar o comprovante de
+            residência antes de uma nova locação.
+            <a id="link_atualizar_comprovante" href="#" target="_blank" class="alert-link">Atualizar cadastro</a>
+          </div>
         </div>
         <div class="col-md-4">
           <label for="equipamento_id" class="form-label">Equipamento (Modelo - Código)</label>
@@ -109,6 +115,32 @@ document.querySelector("#btn-cadastrar-locacao").closest("form").addEventListene
 
   selectEquipamento.addEventListener("change", atualizarValorCalculado);
   selectFrequencia.addEventListener("change", atualizarValorCalculado);
+})();
+</script>
+
+<script>
+(function () {
+  var selectCliente = document.getElementById("cliente_id");
+  var aviso = document.getElementById("aviso_comprovante_desatualizado");
+  var linkAtualizar = document.getElementById("link_atualizar_comprovante");
+  var urlStatusBase = "{{ url_for('clientes.status_cadastral', id=0) }}".replace("/0/", "/__ID__/");
+  var urlEditarBase = "{{ url_for('clientes.editar_cliente', id=0) }}".replace("/0", "/__ID__");
+
+  selectCliente.addEventListener("change", function () {
+    var clienteId = selectCliente.value;
+    aviso.classList.add("d-none");
+    if (!clienteId) return;
+
+    fetch(urlStatusBase.replace("__ID__", clienteId))
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (data && data.precisa_atualizar_comprovante) {
+          linkAtualizar.href = urlEditarBase.replace("__ID__", clienteId);
+          aviso.classList.remove("d-none");
+        }
+      })
+      .catch(function () { /* aviso é só ajuda de UX; o bloqueio real é no back-end */ });
+  });
 })();
 </script>
 

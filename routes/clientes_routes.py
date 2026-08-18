@@ -2,7 +2,7 @@ import os
 import time
 
 import requests
-from flask import Blueprint, render_template, flash, redirect, url_for, request, current_app, send_from_directory
+from flask import Blueprint, render_template, flash, redirect, url_for, request, current_app, send_from_directory, jsonify
 from flask_login import login_required, current_user
 from psycopg2.extras import RealDictCursor
 from werkzeug.utils import secure_filename
@@ -10,6 +10,7 @@ from database import get_db_connection
 from config import Config
 from permissions import requer_permissao, tem_permissao, VER_CLIENTES, GERENCIAR_CLIENTES
 from asaas_config import obter_config_asaas
+from cliente_status import cliente_precisa_atualizar_comprovante
 
 clientes_bp = Blueprint("clientes", __name__, url_prefix="/clientes")
 
@@ -163,7 +164,13 @@ def listar_clientes():
                 if f and f.filename and _allowed_img(f.filename, campo_form):
                     filename = _unique_filename(novo_cliente_id, secure_filename(f.filename))
                     f.save(os.path.join(_pasta_documentos(), filename))
-                    cur.execute(f"UPDATE clientes SET {coluna}=%s WHERE id=%s", (filename, novo_cliente_id))
+                    if campo_form == "comprovante_residencia":
+                        cur.execute(
+                            f"UPDATE clientes SET {coluna}=%s, comprovante_residencia_atualizado_em=NOW() WHERE id=%s",
+                            (filename, novo_cliente_id),
+                        )
+                    else:
+                        cur.execute(f"UPDATE clientes SET {coluna}=%s WHERE id=%s", (filename, novo_cliente_id))
 
             conn.commit()
 
@@ -223,7 +230,13 @@ def editar_cliente(id):
                     _remover_arquivo(atuais[coluna])
                     filename = _unique_filename(id, secure_filename(f.filename))
                     f.save(os.path.join(_pasta_documentos(), filename))
-                    cur.execute(f"UPDATE clientes SET {coluna}=%s WHERE id=%s", (filename, id))
+                    if campo_form == "comprovante_residencia":
+                        cur.execute(
+                            f"UPDATE clientes SET {coluna}=%s, comprovante_residencia_atualizado_em=NOW() WHERE id=%s",
+                            (filename, id),
+                        )
+                    else:
+                        cur.execute(f"UPDATE clientes SET {coluna}=%s WHERE id=%s", (filename, id))
 
             conn.commit()
             flash("Cliente atualizado com sucesso.", "success")
@@ -249,6 +262,23 @@ def editar_cliente(id):
         conn.close()
 
     return render_template("editar_cliente.html", cliente=cliente)
+
+
+@clientes_bp.route("/<int:id>/status-cadastral")
+@login_required
+@requer_permissao(VER_CLIENTES)
+def status_cadastral(id):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("SELECT id FROM clientes WHERE id=%s", (id,))
+        if not cur.fetchone():
+            return jsonify({"erro": "Cliente não encontrado."}), 404
+        precisa = cliente_precisa_atualizar_comprovante(cur, id)
+    finally:
+        cur.close()
+        conn.close()
+    return jsonify({"precisa_atualizar_comprovante": precisa})
 
 
 @clientes_bp.route("/documentos/<filename>")

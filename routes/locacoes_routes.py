@@ -17,6 +17,7 @@ from estoque import registrar_movimentacao
 from assinaturas_core import salvar_assinatura, buscar_assinatura_recente
 from asaas_config import obter_config_asaas
 from relatorios import STATUS_RECEBIDO
+from cliente_status import cliente_precisa_atualizar_comprovante
 
 locacoes_bp = Blueprint("locacoes", __name__, url_prefix="/locacoes")
 
@@ -186,6 +187,9 @@ def listar_locacoes():
         except AsaasError as e:
             flash(str(e), "danger")
             return redirect(url_for("locacoes.listar_locacoes"))
+        except ComprovanteDesatualizadoError as e:
+            flash(str(e), "warning")
+            return redirect(url_for("locacoes.listar_locacoes"))
 
         conn.commit()
         flash("Locação criada, contrato gerado em PDF e assinatura recorrente configurada no Asaas! "
@@ -221,6 +225,11 @@ class AsaasError(Exception):
     pass
 
 
+class ComprovanteDesatualizadoError(Exception):
+    """Cliente precisa reenviar o comprovante de residência antes de alugar de novo."""
+    pass
+
+
 # ==== Criação de locação (reaproveitada pelo formulário manual acima e pela conversão de orçamento) ====
 def criar_locacao_interna(cur, cliente, equipamento, cliente_id, equipamento_id,
                            data_inicio, data_fim, frequencia, valor, observacoes,
@@ -239,6 +248,13 @@ def criar_locacao_interna(cur, cliente, equipamento, cliente_id, equipamento_id,
 
     Retorna o id da locação criada.
     """
+    if cliente_precisa_atualizar_comprovante(cur, cliente_id):
+        raise ComprovanteDesatualizadoError(
+            f"{cliente['nome']} está sem alugar há mais de 90 dias e precisa reenviar o "
+            "comprovante de residência antes de criar uma nova locação. "
+            "Atualize o cadastro do cliente e tente novamente."
+        )
+
     asaas_customer_id = cliente["asaas_id"]
     if not asaas_customer_id:
         raise AsaasError("Cliente sem integração Asaas (asaas_id ausente).")
