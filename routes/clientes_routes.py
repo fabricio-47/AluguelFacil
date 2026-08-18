@@ -29,10 +29,26 @@ EXTENSOES_POR_CAMPO = {
     "foto_cliente": ALLOWED_IMG_EXT | {"pdf"},
 }
 
+# Tipos fixos para os anexos extras (tabela cliente_documentos) — lista
+# fechada + "outro" com descrição livre, separado dos 4 slots fixos acima.
+TIPOS_DOCUMENTO_EXTRA = {
+    "rg": "RG",
+    "cpf": "CPF",
+    "comprovante_residencia": "Comprovante de Residência",
+    "comprovante_renda": "Comprovante de Renda",
+    "contrato": "Contrato",
+    "outro": "Outro",
+}
+ALLOWED_DOC_EXTRA_EXT = ALLOWED_IMG_EXT | {"pdf"}
+
 
 def _allowed_img(filename, campo):
     permitidas = EXTENSOES_POR_CAMPO.get(campo, ALLOWED_IMG_EXT)
     return "." in filename and filename.rsplit(".", 1)[1].lower() in permitidas
+
+
+def _allowed_doc_extra(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_DOC_EXTRA_EXT
 
 
 def _unique_filename(cliente_id, filename):
@@ -272,3 +288,115 @@ def excluir_documento(id, campo):
         conn.close()
 
     return redirect(url_for("clientes.editar_cliente", id=id))
+
+
+# ======================
+# Documentos extras do cliente (upload múltiplo/lista/excluir)
+# ======================
+@clientes_bp.route("/<int:cliente_id>/documentos-extras", methods=["GET", "POST"])
+@login_required
+@requer_permissao(VER_CLIENTES)
+def cliente_documentos_extras(cliente_id):
+    if request.method == "POST" and not tem_permissao(GERENCIAR_CLIENTES):
+        flash("Você não tem permissão para anexar documentos de clientes.", "danger")
+        return redirect(url_for("clientes.cliente_documentos_extras", cliente_id=cliente_id))
+
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    if request.method == "POST":
+        tipo = request.form.get("tipo", "").strip()
+        tipo_outro = request.form.get("tipo_outro", "").strip()
+        files = request.files.getlist("arquivos")
+
+        if tipo not in TIPOS_DOCUMENTO_EXTRA:
+            flash("Selecione um tipo de documento válido.", "warning")
+            return redirect(url_for("clientes.cliente_documentos_extras", cliente_id=cliente_id))
+        if tipo == "outro" and not tipo_outro:
+            flash('Descreva o tipo do documento quando escolher "Outro".', "warning")
+            return redirect(url_for("clientes.cliente_documentos_extras", cliente_id=cliente_id))
+        if not files or files == [None]:
+            flash("Nenhum arquivo selecionado.", "warning")
+            return redirect(url_for("clientes.cliente_documentos_extras", cliente_id=cliente_id))
+
+        count_ok = 0
+        try:
+            for f in files:
+                if not f or f.filename == "":
+                    continue
+                if not _allowed_doc_extra(f.filename):
+                    continue
+                filename = _unique_filename(cliente_id, secure_filename(f.filename))
+                f.save(os.path.join(_pasta_documentos(), filename))
+
+                cur.execute("""
+                    INSERT INTO cliente_documentos (cliente_id, tipo, tipo_outro, arquivo)
+                    VALUES (%s, %s, %s, %s)
+                """, (cliente_id, tipo, tipo_outro if tipo == "outro" else None, filename))
+                count_ok += 1
+
+            conn.commit()
+            if count_ok > 0:
+                flash(f"{count_ok} documento(s) enviado(s) com sucesso!", "success")
+            else:
+                flash("Nenhum arquivo válido foi enviado.", "warning")
+        except Exception as e:
+            conn.rollback()
+            print("Erro ao enviar documentos extras do cliente:", e)
+            flash("Erro ao enviar documentos.", "danger")
+
+        return redirect(url_for("clientes.cliente_documentos_extras", cliente_id=cliente_id))
+
+    try:
+        cur.execute("SELECT id, nome FROM clientes WHERE id=%s", (cliente_id,))
+        cliente = cur.fetchone()
+        if not cliente:
+            flash("Cliente não encontrado.", "warning")
+            return redirect(url_for("clientes.listar_clientes"))
+
+        cur.execute(
+            "SELECT id, tipo, tipo_outro, arquivo, data_upload FROM cliente_documentos "
+            "WHERE cliente_id=%s ORDER BY id DESC",
+            (cliente_id,),
+        )
+        documentos = cur.fetchall()
+    finally:
+        cur.close()
+        conn.close()
+
+    return render_template(
+        "cliente_documentos.html",
+        cliente=cliente,
+        documentos=documentos,
+        tipos=TIPOS_DOCUMENTO_EXTRA,
+    )
+
+
+@clientes_bp.route("/<int:cliente_id>/documentos-extras/<int:doc_id>/excluir", methods=["POST"])
+@login_required
+@requer_permissao(GERENCIAR_CLIENTES)
+def excluir_documento_extra(cliente_id, doc_id):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute(
+            "SELECT arquivo FROM cliente_documentos WHERE id=%s AND cliente_id=%s",
+            (doc_id, cliente_id),
+        )
+        row = cur.fetchone()
+        if row:
+            _remover_arquivo(row["arquivo"])
+            cur.execute("DELETE FROM cliente_documentos WHERE id=%s", (doc_id,))
+            conn.commit()
+            flash("Documento removido.", "info")
+        else:
+            flash("Documento não encontrado.", "warning")
+    except Exception as e:
+        conn.rollback()
+        print("Erro ao remover documento extra do cliente:", e)
+        flash("Erro ao remover documento.", "danger")
+    finally:
+        cur.close()
+        conn.close()
+
+    return redirect(url_for("clientes.cliente_documentos_extras", cliente_id=cliente_id))

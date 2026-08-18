@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Documentos — {{ cliente.nome }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>Documentos do Cliente</h2>
+  <a class="btn btn-outline-secondary" href="{{ url_for('clientes.listar_clientes') }}">
+    <i class="fa-solid fa-arrow-left me-1"></i> Voltar
+  </a>
+</div>
+
+<!-- Info do cliente -->
+<div class="card mb-4 shadow-sm">
+  <div class="card-header bg-dark text-white">
+    <i class="fa-solid fa-user me-1"></i> {{ cliente.nome }}
+  </div>
+</div>
+
+<!-- Formulário de upload -->
+<div class="card mb-4 shadow-sm">
+  <div class="card-header bg-primary text-white">
+    <i class="fa-solid fa-upload me-1"></i> Anexar novo documento
+  </div>
+  <div class="card-body">
+    <form method="POST" enctype="multipart/form-data">
+      <div class="row g-3 align-items-end">
+        <div class="col-md-3">
+          <label for="tipo" class="form-label">Tipo do documento</label>
+          <select class="form-select" id="tipo" name="tipo" required onchange="alternarTipoOutro(this)">
+            <option value="" disabled selected>Selecione...</option>
+            {% for valor, rotulo in tipos.items() %}
+              <option value="{{ valor }}">{{ rotulo }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3 d-none" id="tipo_outro_wrapper">
+          <label for="tipo_outro" class="form-label">Descrição do tipo</label>
+          <input type="text" class="form-control" id="tipo_outro" name="tipo_outro" placeholder="Ex: Certidão de nascimento">
+        </div>
+        <div class="col-md-4">
+          <label for="arquivos" class="form-label">Arquivo(s)</label>
+          <input type="file" name="arquivos" id="arquivos" class="form-control" accept=".png,.jpg,.jpeg,.pdf" multiple required>
+          <small class="text-muted">Formatos: JPG, JPEG, PNG, PDF.</small>
+        </div>
+        <div class="col-md-2">
+          <button class="btn btn-success w-100" type="submit">
+            <i class="fa-solid fa-cloud-arrow-up me-1"></i> Enviar
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Lista de documentos -->
+<div class="row">
+  {% if documentos and documentos|length > 0 %}
+    {% for doc in documentos %}
+      <div class="col-md-3 mb-4">
+        <div class="card shadow-sm h-100">
+          {% set ext = doc.arquivo.rsplit('.', 1)[-1].lower() %}
+          {% if ext == 'pdf' %}
+            <div class="card-img-top d-flex align-items-center justify-content-center bg-light" style="height: 200px;">
+              <i class="fa-solid fa-file-pdf fa-3x text-danger"></i>
+            </div>
+          {% else %}
+            <img src="{{ url_for('clientes.uploaded_documento', filename=doc.arquivo) }}"
+                 class="card-img-top" alt="Documento do cliente" style="height: 200px; object-fit: cover;">
+          {% endif %}
+          <div class="card-body text-center">
+            <span class="badge bg-secondary mb-2">
+              {{ doc.tipo_outro if doc.tipo == 'outro' and doc.tipo_outro else tipos.get(doc.tipo, doc.tipo) }}
+            </span>
+            {% if doc.data_upload %}
+              <small class="text-muted d-block mb-2">Enviado em {{ doc.data_upload }}</small>
+            {% endif %}
+            <a href="{{ url_for('clientes.uploaded_documento', filename=doc.arquivo) }}" target="_blank"
+               class="btn btn-sm btn-outline-primary mb-1">
+              <i class="fa-solid fa-eye me-1"></i> Ver
+            </a>
+            <form method="POST"
+                  action="{{ url_for('clientes.excluir_documento_extra', cliente_id=cliente.id, doc_id=doc.id) }}"
+                  onsubmit="return confirm('Tem certeza que deseja excluir este documento?')">
+              <button type="submit" class="btn btn-sm btn-danger">
+                <i class="fa-solid fa-trash me-1"></i> Excluir
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  {% else %}
+    <div class="col-12">
+      <div class="alert alert-info text-center">
+        <h5 class="mb-1"><i class="fa-regular fa-folder-open me-1"></i> Nenhum documento cadastrado</h5>
+        <p class="mb-0">Use o formulário acima para anexar o primeiro documento deste cliente.</p>
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+<script>
+  function alternarTipoOutro(select) {
+    var wrapper = document.getElementById('tipo_outro_wrapper');
+    var input = document.getElementById('tipo_outro');
+    if (select.value === 'outro') {
+      wrapper.classList.remove('d-none');
+      input.setAttribute('required', 'required');
+    } else {
+      wrapper.classList.add('d-none');
+      input.removeAttribute('required');
+      input.value = '';
+    }
+  }
+</script>
+{% endblock %}

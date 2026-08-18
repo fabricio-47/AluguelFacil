@@ -117,6 +117,9 @@
             <a href="{{ url_for('clientes.editar_cliente', id=cliente.id) }}" class="btn btn-sm btn-warning" title="Editar">
               <i class="fas fa-edit"></i>
             </a>
+            <a href="{{ url_for('clientes.cliente_documentos_extras', cliente_id=cliente.id) }}" class="btn btn-sm btn-info" title="Documentos">
+              <i class="fas fa-folder-open"></i>
+            </a>
             <!-- Botão excluir pode ser adicionado aqui -->
           </td>
         </tr>
