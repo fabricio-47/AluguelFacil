@@ -2,10 +2,12 @@ import json
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from database import get_db_connection
 from permissions import requer_role, CARGOS_CUSTOMIZAVEIS, GRUPOS_PERMISSOES, LABEL_PERMISSAO, PERMISSOES_POR_ROLE
 from asaas_config import cifrar
+from validators import validar_forca_senha
 
 configuracoes_bp = Blueprint("configuracoes", __name__, url_prefix="/configuracoes")
 
@@ -113,3 +115,43 @@ def salvar_permissoes():
         conn.close()
 
     return redirect(url_for("configuracoes.pagina_configuracoes"))
+
+
+# ==== Trocar a própria senha (qualquer cargo logado) ====
+@configuracoes_bp.route("/senha", methods=["GET", "POST"])
+@login_required
+def trocar_senha():
+    if request.method == "POST":
+        senha_atual = request.form.get("senha_atual") or ""
+        nova_senha = request.form.get("nova_senha") or ""
+        confirmacao_senha = request.form.get("confirmacao_senha") or ""
+
+        if not check_password_hash(current_user.senha, senha_atual):
+            flash("Senha atual incorreta.", "danger")
+            return redirect(url_for("configuracoes.trocar_senha"))
+
+        if nova_senha != confirmacao_senha:
+            flash("A nova senha e a confirmação não coincidem.", "warning")
+            return redirect(url_for("configuracoes.trocar_senha"))
+
+        senha_valida, erro_senha = validar_forca_senha(nova_senha, [current_user.username, current_user.email])
+        if not senha_valida:
+            flash(erro_senha, "warning")
+            return redirect(url_for("configuracoes.trocar_senha"))
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+        try:
+            cur.execute("UPDATE usuarios SET senha=%s WHERE id=%s", (generate_password_hash(nova_senha), current_user.id))
+            conn.commit()
+            flash("Senha alterada com sucesso!", "success")
+        except Exception as e:
+            conn.rollback()
+            flash(f"Erro ao alterar senha: {e}", "danger")
+        finally:
+            cur.close()
+            conn.close()
+
+        return redirect(url_for("configuracoes.trocar_senha"))
+
+    return render_template("trocar_senha.html")

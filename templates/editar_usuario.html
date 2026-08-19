@@ -23,11 +23,19 @@
           {% endfor %}
         </select>
       </div>
-      <div class="mb-3">
-        <label class="form-label">Nova senha (deixe em branco pra manter a atual)</label>
-        <input type="password" name="senha" class="form-control" minlength="6">
-      </div>
       <button type="submit" class="btn btn-primary">Salvar</button>
+    </form>
+  </div>
+</div>
+
+<div class="card mt-3">
+  <div class="card-body">
+    <h5 class="card-title">Senha</h5>
+    <p class="card-text text-muted">Gera uma senha temporária aleatória para o usuário. A senha atual dele deixa de funcionar imediatamente.</p>
+    <form method="post" action="{{ url_for('usuarios.resetar_senha_usuario', id=usuario.id) }}">
+      <button type="submit" class="btn btn-outline-danger">
+        <i class="fa-solid fa-key me-1"></i> Gerar nova senha temporária
+      </button>
     </form>
   </div>
 </div>

@@ -480,7 +480,8 @@ def canceladas():
     cur = conn.cursor()
     cur.execute("""
         SELECT l.id, l.data_inicio, l.data_fim, l.valor, l.frequencia_pagamento,
-        l.pagamento_status, l.valor_pago, l.asaas_subscription_id, l.boleto_url,
+        l.pagamento_status, l.valor_pago, l.asaas_subscription_id, l.asaas_payment_id,
+        l.boleto_url, l.contrato_arquivo,
         c.nome AS cliente_nome, ei.modelo AS moto_modelo, ei.codigo_interno AS moto_placa
         FROM locacoes l
         JOIN clientes c ON l.cliente_id = c.id
@@ -491,7 +492,7 @@ def canceladas():
     locacoes = cur.fetchall()
     cur.close()
     conn.close()
-    return render_template("locacoes_canceladas.html", locacoes=locacoes)
+    return render_template("locacoes_canceladas.html", canceladas=locacoes)
 
 # ==== Lógica de cancelamento (reaproveitada por cancelar_locacao e pelo checklist de devolução) ====
 def executar_cancelamento_locacao(cur, locacao_id, equipamento_id, asaas_subscription_id, company_id):

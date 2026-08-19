@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>🏢 Cadastrar Novo Imóvel</title>
+    <link href="https://jsdelivr.net" rel="stylesheet">
+</head>
+<body class="bg-light">
+<div class="container mt-5">
+    <div class="card shadow p-4">
+        <h2 class="mb-3">🏢 Cadastrar Novo Imóvel</h2>
+        <p class="text-muted">Preencha os dados abaixo para adicionar um imóvel ao inventário.</p>
+        <hr>
+        <form action="/imoveis/salvar" method="POST">
+            <div class="mb-3">
+                <label class="form-label">Endereço Completo</label>
+                <input type="text" class="form-control" name="endereco_completo" placeholder="Rua, número, bairro e cidade" required>
+            </div>
+            <div class="row mb-3">
+                <div class="col">
+                    <label class="form-label">Área (m²)</label>
+                    <input type="number" step="0.1" class="form-control" name="metro_quadrado" required>
+                </div>
+                <div class="col">
+                    <label class="form-label">Quartos</label>
+                    <input type="number" class="form-control" name="quartos" value="0" required>
+                </div>
+                <div class="col">
+                    <label class="form-label">Banheiros</label>
+                    <input type="number" class="form-control" name="banheiros" value="0" required>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col">
+                    <label class="form-label">Tipo de Imóvel</label>
+                    <select class="form-select" name="tipo_imovel" required>
+                        <option value="apartamento">Apartamento</option>
+                        <option value="casa">Casa</option>
+                        <option value="comercial">Comercial</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <label class="form-label">IPTU (R$)</label>
+                    <input type="number" step="0.01" class="form-control" name="iptu" value="0.00">
+                </div>
+                <div class="col">
+                    <label class="form-label">Condomínio (R$)</label>
+                    <input type="number" step="0.01" class="form-control" name="condominio" value="0.00">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Salvar Imóvel</button>
+        </form>
+    </div>
+</div>
+</body>
+</html>

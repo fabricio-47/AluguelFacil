@@ -9,6 +9,7 @@ from database import get_db_connection
 from permissions import requer_admin_plataforma
 from planos import PRECO_PLANO
 from text_utils import slugify
+from validators import validar_forca_senha
 
 admin_plataforma_bp = Blueprint("admin_plataforma", __name__, url_prefix="/admin-plataforma")
 
@@ -100,8 +101,12 @@ def nova_empresa():
         if not nome or plano not in PLANOS_DISPONIVEIS:
             flash("Nome da empresa e plano são obrigatórios.", "warning")
             return redirect(url_for("admin_plataforma.nova_empresa"))
-        if not admin_username or not admin_email or len(admin_senha) < 6:
-            flash("Informe usuário, e-mail e senha (mín. 6 caracteres) do administrador inicial.", "warning")
+        if not admin_username or not admin_email:
+            flash("Informe usuário, e-mail e senha do administrador inicial.", "warning")
+            return redirect(url_for("admin_plataforma.nova_empresa"))
+        senha_valida, erro_senha = validar_forca_senha(admin_senha, [admin_username, admin_email])
+        if not senha_valida:
+            flash(erro_senha, "warning")
             return redirect(url_for("admin_plataforma.nova_empresa"))
 
         conn = get_db_connection()

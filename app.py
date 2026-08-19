@@ -1,106 +1,124 @@
-from flask import Flask
-from flask_login import LoginManager
 import os
+import psycopg2
+from flask import Flask, flash, redirect, render_template, request, url_for
 
-from config import Config
-from routes.auth_routes import auth_bp
-from routes.clientes_routes import clientes_bp
-from routes.equipamentos_routes import equipamentos_bp
-from routes.locacoes_routes import locacoes_bp
-from routes.financeiro_routes import financeiro_bp
-from routes.checklists_routes import checklists_bp
-from routes.manutencoes_routes import manutencoes_bp
-from routes.filiais_routes import filiais_bp
-from routes.entregas_routes import entregas_bp
-from routes.operacional_routes import operacional_bp
-from routes.relatorios_routes import relatorios_bp
-from routes.servicos_routes import servicos_bp
-from routes.webhook_routes import webhook_bp
-from routes.dashboard_routes import dashboard_bp
-from routes.orcamentos_routes import orcamentos_bp
-from routes.crm_routes import crm_bp
-from routes.catalogo_routes import catalogo_bp
-from routes.portal_routes import portal_bp
-from routes.usuarios_routes import usuarios_bp
-from routes.admin_plataforma_routes import admin_plataforma_bp
-from routes.assinaturas_routes import assinaturas_bp
-from routes.assistente_routes import assistente_bp
-from routes.configuracoes_routes import configuracoes_bp
-
-# Inicialização
 app = Flask(__name__)
-app.config.from_object(Config)
+app.secret_key = os.environ.get('SECRET_KEY', 'chave-secreta-provisoria-aluguelfacil')
 
-# Flask-Login
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = "auth.login"
-login_manager.login_message = "Faça login para acessar esta página."
-login_manager.login_message_category = "info"
+def get_db_connection():
+    """Estabelece a conexão com o banco de dados local ou produção."""
+    # Se houver DATABASE_URL configurada (Render), usa ela. Caso contrário, conecta local.
+    database_url = os.environ.get('DATABASE_URL')
+    if database_url:
+        return psycopg2.connect(database_url)
+    
+    # Configuração padrão do seu ambiente local
+    return psycopg2.connect(
+        host="localhost",
+        database="postgres",
+        user="postgres",
+        password="password" # Substitua pela sua senha local se houver
+    )
 
-@login_manager.user_loader
-def load_user(user_id):
-    # Importa aqui para evitar import circular
-    from models.user import User
+@app.route('/')
+def index():
+    """Página inicial do sistema."""
+    return "<h1>SaaS AluguelFácil Rodando com Sucesso!</h1><p>Acesse <a href='/imoveis/cadastrar'>/imoveis/cadastrar</a> ou <a href='/veiculos/cadastrar'>/veiculos/cadastrar</a></p>"
 
-    return User.get_by_id(user_id)
+# ==========================================
+# 🏢 MÓDULO DE IMÓVEIS (ROTAS)
+# ==========================================
 
-# Registro dos blueprints
-app.register_blueprint(dashboard_bp)  # Dashboard na raiz "/"
-app.register_blueprint(auth_bp)
-app.register_blueprint(clientes_bp)
-app.register_blueprint(equipamentos_bp)
-app.register_blueprint(locacoes_bp)
-app.register_blueprint(financeiro_bp)
-app.register_blueprint(checklists_bp)
-app.register_blueprint(manutencoes_bp)
-app.register_blueprint(filiais_bp)
-app.register_blueprint(entregas_bp)
-app.register_blueprint(operacional_bp)
-app.register_blueprint(relatorios_bp)
-app.register_blueprint(servicos_bp)
-app.register_blueprint(webhook_bp)
-app.register_blueprint(orcamentos_bp)
-app.register_blueprint(crm_bp)
-app.register_blueprint(catalogo_bp)
-app.register_blueprint(portal_bp)
-app.register_blueprint(usuarios_bp)
-app.register_blueprint(admin_plataforma_bp)
-app.register_blueprint(assinaturas_bp)
-app.register_blueprint(assistente_bp)
-app.register_blueprint(configuracoes_bp)
+@app.route('/imoveis/cadastrar', methods=['GET'])
+def tela_cadastro_imovel():
+    """Exibe o formulário HTML de cadastro de imóvel."""
+    return render_template('imoveis/cadastrar.html')
 
-# Criar pastas de upload logo na inicialização do app (Flask 3.x removeu before_first_request)
-upload_folder = app.config.get("UPLOAD_FOLDER", "uploads")
-for folder in ["contratos", "habilitacoes", "motos", "checklists", "assinaturas"]:
-    path = os.path.join(upload_folder, folder)
-    os.makedirs(path, exist_ok=True)
+@app.route('/imoveis/salvar', methods=['POST'])
+def salvar_imovel():
+    """Recebe os dados do formulário e grava nas tabelas unificadas."""
+    endereco = request.form.get('endereco_completo')
+    m2 = request.form.get('metro_quadrado')
+    quartos = request.form.get('quartos', 0)
+    banheiros = request.form.get('banheiros', 0)
+    tipo = request.form.get('tipo_imovel')
+    iptu = request.form.get('iptu', 0.0)
+    condominio = request.form.get('condominio', 0.0)
+    
+    tenant_id = 1 
 
-if __name__ == "__main__":
-    app.run(debug=True)
-
-import click
-from flask.cli import with_appcontext
-from database import get_db_connection
-
-@click.command("init-db")
-@with_appcontext
-def init_db_command():
-    """Inicializa o banco de dados aplicando o schema.sql"""
     conn = get_db_connection()
-    cur = conn.cursor()
+    cursor = conn.cursor()
     try:
-        with open("schema.sql", "r", encoding="utf-8") as f:
-            sql_code = f.read()
-            cur.execute(sql_code)
+        # 1. Insere o item na tabela central unificada pai
+        cursor.execute(
+            "INSERT INTO rentable_items (tenant_id, item_type, status) VALUES (%s, %s, %s) RETURNING id;",
+            (tenant_id, 'imovel', 'disponivel')
+        )
+        rentable_item_id = cursor.fetchone()[0]
+
+        # 2. Insere os campos específicos na tabela filha de imóveis
+        cursor.execute(
+            """INSERT INTO imoveis (rentable_item_id, endereco_completo, metro_quadrado, quartos, banheiros, tipo_imovel, iptu, condominio)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s);""",
+            (rentable_item_id, endereco, m2, quartos, banheiros, tipo, iptu, condominio)
+        )
         conn.commit()
-        click.echo("Banco de dados inicializado com sucesso!")
+        flash("Imóvel cadastrado com sucesso!", "success")
     except Exception as e:
         conn.rollback()
-        click.echo(f"Erro ao inicializar o banco: {e}")
+        flash(f"Erro ao salvar imóvel: {str(e)}", "danger")
     finally:
-        cur.close()
+        cursor.close()
         conn.close()
 
-# Registra o comando personalizado no Flask CLI
-app.cli.add_command(init_db_command)
+    return redirect(url_for('tela_cadastro_imovel'))
+
+
+# ==========================================
+# 🚗 MÓDULO DE VEÍCULOS (ROTAS)
+# ==========================================
+
+@app.route('/veiculos/cadastrar', methods=['GET'])
+def tela_cadastro_veiculo():
+    """Exibe o formulário HTML de cadastro de veículo."""
+    return render_template('veiculos/cadastrar.html')
+
+@app.route('/veiculos/salvar', methods=['POST'])
+def salvar_veiculo():
+    """Recebe os dados do formulário e grava nas tabelas unificadas."""
+    placa = request.form.get('placa')
+    chassi = request.form.get('chassi')
+    renavam = request.form.get('renavam')
+    km = request.form.get('quilometragem', 0)
+    combustivel = request.form.get('combustivel')
+    cambio = request.form.get('cambio')
+    
+    tenant_id = 1
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        # 1. Insere o item na tabela central unificada pai
+        cursor.execute(
+            "INSERT INTO rentable_items (tenant_id, item_type, status) VALUES (%s, %s, %s) RETURNING id;",
+            (tenant_id, 'veiculo', 'disponivel')
+        )
+        rentable_item_id = cursor.fetchone()[0]
+
+        # 2. Insere os campos específicos na tabela filha de veículos
+        cursor.execute(
+            """INSERT INTO veiculos (rentable_item_id, placa, chassi, renavam, quilometragem, combustivel, cambio)
+               VALUES (%s, %s, %s, %s, %s, %s, %s);""",
+            (rentable_item_id, placa, chassi, renavam, km, combustivel, cambio)
+        )
+        conn.commit()
+        flash("Veículo cadastrado com sucesso!", "success")
+    except Exception as e:
+        conn.rollback()
+        flash(f"Erro ao salvar veículo: {str(e)}", "danger")
+    finally:
+        cursor.close()
+        conn.close()
+
+    return redirect(url_for('tela_cadastro_veiculo'))

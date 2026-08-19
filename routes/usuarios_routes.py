@@ -1,4 +1,6 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+import secrets
+
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from flask_login import login_required, current_user
 from psycopg2.extras import RealDictCursor
 from werkzeug.security import generate_password_hash
@@ -6,6 +8,7 @@ from werkzeug.security import generate_password_hash
 from database import get_db_connection
 from permissions import requer_permissao, tem_permissao, VER_USUARIOS, GERENCIAR_USUARIOS
 from planos import verificar_limite
+from validators import validar_forca_senha
 
 usuarios_bp = Blueprint("usuarios", __name__, url_prefix="/usuarios")
 
@@ -33,8 +36,9 @@ def listar_usuarios():
         if not username or not email or not senha or role not in ROLES_DISPONIVEIS:
             flash("Preencha usuário, e-mail, senha e um cargo válido.", "warning")
             return redirect(url_for("usuarios.listar_usuarios"))
-        if len(senha) < 6:
-            flash("A senha precisa ter pelo menos 6 caracteres.", "warning")
+        senha_valida, erro_senha = validar_forca_senha(senha, [username, email])
+        if not senha_valida:
+            flash(erro_senha, "warning")
             return redirect(url_for("usuarios.listar_usuarios"))
 
         conn = get_db_connection()
@@ -100,23 +104,13 @@ def editar_usuario(id):
 
         if request.method == "POST":
             role = (request.form.get("role") or "").strip()
-            nova_senha = request.form.get("senha") or ""
 
             if role not in ROLES_DISPONIVEIS:
                 flash("Selecione um cargo válido.", "warning")
                 return redirect(url_for("usuarios.editar_usuario", id=id))
 
             try:
-                if nova_senha:
-                    if len(nova_senha) < 6:
-                        flash("A nova senha precisa ter pelo menos 6 caracteres.", "warning")
-                        return redirect(url_for("usuarios.editar_usuario", id=id))
-                    cur.execute(
-                        "UPDATE usuarios SET role=%s, senha=%s WHERE id=%s",
-                        (role, generate_password_hash(nova_senha), id),
-                    )
-                else:
-                    cur.execute("UPDATE usuarios SET role=%s WHERE id=%s", (role, id))
+                cur.execute("UPDATE usuarios SET role=%s WHERE id=%s", (role, id))
                 conn.commit()
                 flash("Usuário atualizado com sucesso!", "success")
                 return redirect(url_for("usuarios.listar_usuarios"))
@@ -128,3 +122,38 @@ def editar_usuario(id):
     finally:
         cur.close()
         conn.close()
+
+
+# ==== Gera uma senha temporária aleatória e mostra ela uma única vez ====
+@usuarios_bp.route("/<int:id>/resetar-senha", methods=["POST"])
+@login_required
+@requer_permissao(GERENCIAR_USUARIOS)
+def resetar_senha_usuario(id):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("SELECT id, username, company_id FROM usuarios WHERE id=%s", (id,))
+        usuario = cur.fetchone()
+        if not usuario or usuario["company_id"] != current_user.company_id:
+            flash("Usuário não encontrado.", "warning")
+            return redirect(url_for("usuarios.listar_usuarios"))
+
+        senha_temporaria = secrets.token_urlsafe(6)[:8]
+        cur.execute("UPDATE usuarios SET senha=%s WHERE id=%s", (generate_password_hash(senha_temporaria), id))
+        conn.commit()
+
+        session["senha_resetada"] = {"usuario": usuario["username"], "senha": senha_temporaria}
+        return redirect(url_for("usuarios.senha_resetada"))
+    finally:
+        cur.close()
+        conn.close()
+
+
+@usuarios_bp.route("/senha-resetada")
+@login_required
+@requer_permissao(GERENCIAR_USUARIOS)
+def senha_resetada():
+    dados = session.pop("senha_resetada", None)
+    if not dados:
+        return redirect(url_for("usuarios.listar_usuarios"))
+    return render_template("senha_resetada.html", dados=dados)

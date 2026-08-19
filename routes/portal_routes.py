@@ -6,6 +6,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from database import get_db_connection
 from portal_auth import login_cliente, logout_cliente, cliente_atual, requer_login_cliente
+from validators import validar_forca_senha
 
 portal_bp = Blueprint("portal", __name__, url_prefix="/portal")
 
@@ -59,8 +60,9 @@ def primeiro_acesso():
         if not email or not documento:
             flash("Informe e-mail e CPF ou telefone cadastrados.", "warning")
             return redirect(url_for("portal.primeiro_acesso"))
-        if len(senha) < 6:
-            flash("A senha precisa ter pelo menos 6 caracteres.", "warning")
+        senha_valida, erro_senha = validar_forca_senha(senha, [email, documento])
+        if not senha_valida:
+            flash(erro_senha, "warning")
             return redirect(url_for("portal.primeiro_acesso"))
         if senha != confirmar_senha:
             flash("As senhas não coincidem.", "warning")

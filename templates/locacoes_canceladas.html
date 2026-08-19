@@ -30,7 +30,6 @@
                                         <th>Valor</th>
                                         <th>Frequência</th>
                                         <th>Tipo</th>
-                                        <th>Boletos</th>
                                         <th>Status Pagamento</th>
                                         <th>Total Recebido</th>
                                         <th>Ações</th>
@@ -83,70 +82,7 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            {% if loc.total_boletos > 0 %}
-                                                <div class="small">
-                                                    <div><strong>Total:</strong> {{ loc.total_boletos }}</div>
-                                                    {% if loc.boletos_pagos > 0 %}
-                                                        <div class="text-success">
-                                                            <i class="fas fa-check-circle me-1"></i>
-                                                            Pagos: {{ loc.boletos_pagos }}
-                                                        </div>
-                                                    {% endif %}
-                                                    {% if loc.boletos_pendentes > 0 %}
-                                                        <div class="text-warning">
-                                                            <i class="fas fa-clock me-1"></i>
-                                                            Pendentes: {{ loc.boletos_pendentes }}
-                                                        </div>
-                                                    {% endif %}
-                                                    {% if loc.boletos_vencidos > 0 %}
-                                                        <div class="text-danger">
-                                                            <i class="fas fa-exclamation-triangle me-1"></i>
-                                                            Vencidos: {{ loc.boletos_vencidos }}
-                                                        </div>
-                                                    {% endif %}
-                                                    {% if loc.boletos_cancelados > 0 %}
-                                                        <div class="text-muted">
-                                                            <i class="fas fa-ban me-1"></i>
-                                                            Cancelados: {{ loc.boletos_cancelados }}
-                                                        </div>
-                                                    {% endif %}
-                                                </div>
-                                            {% else %}
-                                                <span class="text-muted">Nenhum boleto</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            {% if loc.status_ultimo_boleto %}
-                                                {% if loc.status_ultimo_boleto == 'RECEIVED' %}
-                                                    <span class="badge bg-success">
-                                                        <i class="fas fa-check me-1"></i>
-                                                        Pago
-                                                    </span>
-                                                {% elif loc.status_ultimo_boleto == 'PENDING' %}
-                                                    <span class="badge bg-warning">
-                                                        <i class="fas fa-clock me-1"></i>
-                                                        Pendente
-                                                    </span>
-                                                {% elif loc.status_ultimo_boleto == 'OVERDUE' %}
-                                                    <span class="badge bg-danger">
-                                                        <i class="fas fa-exclamation-triangle me-1"></i>
-                                                        Vencido
-                                                    </span>
-                                                {% elif loc.status_ultimo_boleto == 'CANCELLED' %}
-                                                    <span class="badge bg-secondary">
-                                                        <i class="fas fa-ban me-1"></i>
-                                                        Cancelado
-                                                    </span>
-                                                {% else %}
-                                                    <span class="badge bg-secondary">{{ loc.status_ultimo_boleto }}</span>
-                                                {% endif %}
-                                                
-                                                {% if loc.ultimo_vencimento %}
-                                                    <br><small class="text-muted">
-                                                        Último: {{ loc.ultimo_vencimento.strftime('%d/%m/%Y') }}
-                                                    </small>
-                                                {% endif %}
-                                            {% elif loc.pagamento_status %}
+                                            {% if loc.pagamento_status %}
                                                 {% if loc.pagamento_status == 'RECEIVED' %}
                                                     <span class="badge bg-success">
                                                         <i class="fas fa-check me-1"></i>
@@ -165,9 +101,7 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            {% if loc.total_recebido_boletos > 0 %}
-                                                <strong class="text-success">R$ {{ "%.2f"|format(loc.total_recebido_boletos) }}</strong>
-                                            {% elif loc.valor_pago %}
+                                            {% if loc.valor_pago %}
                                                 <strong class="text-success">R$ {{ "%.2f"|format(loc.valor_pago) }}</strong>
                                             {% else %}
                                                 <span class="text-muted">R$ 0,00</span>
@@ -175,37 +109,23 @@
                                         </td>
                                         <td>
                                             <div class="btn-group-vertical btn-group-sm" role="group">
-                                                {% if loc.contrato_pdf %}
-                                                    <a href="{{ url_for('locacoes.uploaded_contract', filename=loc.contrato_pdf) }}" 
+                                                {% if loc.contrato_arquivo %}
+                                                    <a href="{{ url_for('locacoes.contrato_pdf', locacao_id=loc.id) }}"
                                                        class="btn btn-outline-primary btn-sm" target="_blank">
                                                         <i class="fas fa-file-pdf me-1"></i>
                                                         Contrato
                                                     </a>
                                                 {% endif %}
-                                                
-                                                {% if loc.url_ultimo_boleto %}
-                                                    <a href="{{ loc.url_ultimo_boleto }}" 
-                                                       class="btn btn-outline-info btn-sm" target="_blank">
-                                                        <i class="fas fa-barcode me-1"></i>
-                                                        Último Boleto
-                                                    </a>
-                                                {% elif loc.boleto_url %}
-                                                    <a href="{{ loc.boleto_url }}" 
+
+                                                {% if loc.boleto_url %}
+                                                    <a href="{{ loc.boleto_url }}"
                                                        class="btn btn-outline-info btn-sm" target="_blank">
                                                         <i class="fas fa-barcode me-1"></i>
                                                         Boleto
                                                     </a>
                                                 {% endif %}
-                                                
-                                                {% if loc.total_boletos > 0 %}
-                                                    <a href="{{ url_for('locacoes.boletos_locacao', locacao_id=loc.id) }}" 
-                                                       class="btn btn-outline-secondary btn-sm">
-                                                        <i class="fas fa-list me-1"></i>
-                                                        Ver Boletos ({{ loc.total_boletos }})
-                                                    </a>
-                                                {% endif %}
-                                                
-                                                <a href="{{ url_for('servicos.servicos_locacao', locacao_id=loc.id) }}" 
+
+                                                <a href="{{ url_for('servicos.listar_servicos', locacao_id=loc.id) }}"
                                                    class="btn btn-outline-warning btn-sm">
                                                     <i class="fas fa-tools me-1"></i>
                                                     Serviços

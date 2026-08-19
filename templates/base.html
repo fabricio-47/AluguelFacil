@@ -207,11 +207,17 @@
 
     <!-- Login/Logout -->
     <ul class="navbar-nav ms-auto">
-    {% if session.get('user_id') %}
+    {% if current_user.is_authenticated %}
     <li class="nav-item">
     <span class="navbar-text text-light me-3">
-    Olá, {{ session.get('username') or 'Usuário' }}
+    Olá, {{ current_user.username or 'Usuário' }}
     </span>
+    </li>
+    <li class="nav-item">
+    <a class="nav-link {% if request.endpoint == 'configuracoes.trocar_senha' %}active{% endif %}"
+    href="{{ url_for('configuracoes.trocar_senha') }}">
+    <i class="fa-solid fa-key me-1"></i>Trocar senha
+    </a>
     </li>
     <li class="nav-item">
     <a class="nav-link" href="{{ url_for('auth.logout') }}">

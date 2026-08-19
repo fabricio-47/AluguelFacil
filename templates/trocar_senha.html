@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Alterar Minha Senha{% endblock %}
+{% block content %}
+<div class="mx-auto" style="max-width: 500px;">
+  <h2 class="mb-4">Alterar Minha Senha</h2>
+
+  <div class="card">
+    <div class="card-body">
+      <form method="post" action="{{ url_for('configuracoes.trocar_senha') }}">
+        <div class="mb-3">
+          <label class="form-label">Senha Atual</label>
+          <input type="password" name="senha_atual" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Nova Senha</label>
+          <input type="password" name="nova_senha" class="form-control" minlength="8" required>
+          <div class="form-text">Mínimo de 8 caracteres. Não use dados óbvios.</div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Confirmar Nova Senha</label>
+          <input type="password" name="confirmacao_senha" class="form-control" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Atualizar Senha</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

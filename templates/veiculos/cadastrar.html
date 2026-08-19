@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>🚗 Cadastrar Novo Veículo</title>
+    <link href="https://jsdelivr.net" rel="stylesheet">
+</head>
+<body class="bg-light">
+<div class="container mt-5">
+    <div class="card shadow p-4">
+        <h2 class="mb-3">🚗 Cadastrar Novo Veículo</h2>
+        <p class="text-muted">Preencha os dados abaixo para adicionar um veículo à frota.</p>
+        <hr>
+        <form action="/veiculos/salvar" method="POST">
+            <div class="row mb-3">
+                <div class="col">
+                    <label class="form-label">Placa</label>
+                    <input type="text" class="form-control" name="placa" placeholder="ABC1D23" maxlength="10" required>
+                </div>
+                <div class="col">
+                    <label class="form-label">Chassi</label>
+                    <input type="text" class="form-control" name="chassi" placeholder="Número do Chassi" required>
+                </div>
+                <div class="col">
+                    <label class="form-label">Renavam</label>
+                    <input type="text" class="form-control" name="renavam" placeholder="Número do Renavam" required>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col">
+                    <label class="form-label">Quilometragem Atual (KM)</label>
+                    <input type="number" class="form-control" name="quilometragem" value="0" required>
+                </div>
+                <div class="col">
+                    <label class="form-label">Combustível</label>
+                    <select class="form-select" name="combustivel" required>
+                        <option value="flex">Flex</option>
+                        <option value="gasolina">Gasolina</option>
+                        <option value="diesel">Diesel</option>
+                        <option value="eletrico">Elétrico</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <label class="form-label">Câmbio</label>
+                    <select class="form-select" name="cambio" required>
+                        <option value="manual">Manual</option>
+                        <option value="automatico">Automático</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-success w-100">Salvar Veículo</button>
+        </form>
+    </div>
+</div>
+</body>
+</html>
