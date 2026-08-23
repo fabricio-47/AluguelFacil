@@ -129,13 +129,13 @@ def listar_orcamentos():
             """, (int(current_user.id),))
         orcamentos = cur.fetchall()
 
-        cur.execute("SELECT id, nome FROM clientes ORDER BY nome ASC")
+        cur.execute("SELECT id, nome FROM clientes WHERE company_id = %s ORDER BY nome ASC", (current_user.company_id,))
         clientes = cur.fetchall()
 
         cur.execute("""
             SELECT id, nome, modelo, codigo_interno, valor_diaria, valor_semanal, valor_mensal
-            FROM equipment_items WHERE status != 'inativo' ORDER BY nome ASC
-        """)
+            FROM equipment_items WHERE status != 'inativo' AND company_id = %s ORDER BY nome ASC
+        """, (current_user.company_id,))
         equipamentos = [{
             "id": r["id"], "nome": r["nome"], "modelo": r["modelo"], "codigo_interno": r["codigo_interno"],
             "valor_diaria": float(r["valor_diaria"]) if r["valor_diaria"] is not None else None,
