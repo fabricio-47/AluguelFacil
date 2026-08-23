@@ -190,6 +190,9 @@ def listar_locacoes():
         except ComprovanteDesatualizadoError as e:
             flash(str(e), "warning")
             return redirect(url_for("locacoes.listar_locacoes"))
+        except AcessoNegadoError as e:
+            flash(str(e), "danger")
+            return redirect(url_for("locacoes.listar_locacoes"))
 
         conn.commit()
         flash("Locação criada, contrato gerado em PDF e assinatura recorrente configurada no Asaas! "
@@ -230,6 +233,11 @@ class ComprovanteDesatualizadoError(Exception):
     pass
 
 
+class AcessoNegadoError(Exception):
+    """Cliente ou equipamento pertence a outra empresa (violação de isolamento multi-tenant)."""
+    pass
+
+
 # ==== Criação de locação (reaproveitada pelo formulário manual acima e pela conversão de orçamento) ====
 def criar_locacao_interna(cur, cliente, equipamento, cliente_id, equipamento_id,
                            data_inicio, data_fim, frequencia, valor, observacoes,
@@ -246,8 +254,29 @@ def criar_locacao_interna(cur, cliente, equipamento, cliente_id, equipamento_id,
     conversão de orçamento (bloco 6) não passa isso, e o contrato sai sem
     assinatura embutida nesse caso, como já era antes deste bloco.
 
+    Antes de qualquer outra coisa, valida que cliente_id e equipamento_id pertencem
+    à empresa do usuário logado — busca o company_id direto do banco (não confia no
+    dict já buscado pelo chamador), pra proteger a função mesmo que um chamador
+    futuro esqueça de filtrar por empresa. Levanta AcessoNegadoError caso não bata.
+
     Retorna o id da locação criada.
     """
+    company_id = current_user.company_id
+
+    cur.execute("SELECT company_id FROM clientes WHERE id=%s", (cliente_id,))
+    cliente_company = cur.fetchone()
+    if not cliente_company or cliente_company["company_id"] != company_id:
+        raise AcessoNegadoError(
+            "Cliente não encontrado ou não pertence à sua empresa. Requisição recusada."
+        )
+
+    cur.execute("SELECT company_id FROM equipment_items WHERE id=%s", (equipamento_id,))
+    equipamento_company = cur.fetchone()
+    if not equipamento_company or equipamento_company["company_id"] != company_id:
+        raise AcessoNegadoError(
+            "Equipamento não encontrado ou não pertence à sua empresa. Requisição recusada."
+        )
+
     if cliente_precisa_atualizar_comprovante(cur, cliente_id):
         raise ComprovanteDesatualizadoError(
             f"{cliente['nome']} está sem alugar há mais de 90 dias e precisa reenviar o "
