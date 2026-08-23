@@ -48,9 +48,9 @@ def listar_locacoes():
                 FROM locacoes l
                 JOIN clientes c ON c.id = l.cliente_id
                 JOIN equipment_items ei ON ei.id = l.equipment_item_id
-                WHERE l.cancelado = FALSE
+                WHERE l.cancelado = FALSE AND l.company_id = %s
                 ORDER BY l.id DESC
-            """)
+            """, (current_user.company_id,))
             locacoes_rows = cur.fetchall()
             locacoes = [{
                 "id": r["id"],
@@ -67,15 +67,15 @@ def listar_locacoes():
             } for r in locacoes_rows]
 
             # Clientes para o select
-            cur.execute("SELECT id, nome FROM clientes ORDER BY nome ASC")
+            cur.execute("SELECT id, nome FROM clientes WHERE company_id = %s ORDER BY nome ASC", (current_user.company_id,))
             clientes = [{"id": r["id"], "nome": r["nome"]} for r in cur.fetchall()]
 
             # Equipamentos disponíveis, com os preços por frequência pro cálculo automático no front-end
             cur.execute("""
                 SELECT id, modelo, codigo_interno AS codigo, valor_semanal, valor_mensal
                 FROM equipment_items
-                WHERE status = 'disponivel' ORDER BY modelo ASC
-            """)
+                WHERE status = 'disponivel' AND company_id = %s ORDER BY modelo ASC
+            """, (current_user.company_id,))
             equipamentos = [{
                 "id": r["id"], "modelo": r["modelo"], "codigo": r["codigo"],
                 "valor_semanal": float(r["valor_semanal"]) if r["valor_semanal"] is not None else None,
@@ -479,15 +479,44 @@ def canceladas():
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("""
-        SELECT l.id, l.data_inicio, l.data_fim, l.valor, l.frequencia_pagamento,
-        l.pagamento_status, l.valor_pago, l.asaas_subscription_id, l.boleto_url,
-        c.nome AS cliente_nome, ei.modelo AS equipamento_modelo, ei.codigo_interno AS equipamento_codigo
+        SELECT
+            l.id, l.data_inicio, l.data_fim, l.valor, l.frequencia_pagamento,
+            l.pagamento_status, l.valor_pago, l.asaas_subscription_id, l.asaas_payment_id, l.boleto_url,
+            c.nome AS cliente_nome, ei.modelo AS equipamento_modelo, ei.codigo_interno AS equipamento_codigo,
+            COALESCE(bcount.total_boletos, 0) AS total_boletos,
+            COALESCE(bcount.boletos_pagos, 0) AS boletos_pagos,
+            COALESCE(bcount.boletos_pendentes, 0) AS boletos_pendentes,
+            COALESCE(bcount.boletos_vencidos, 0) AS boletos_vencidos,
+            COALESCE(bcount.boletos_cancelados, 0) AS boletos_cancelados,
+            COALESCE(bcount.total_recebido_boletos, 0) AS total_recebido_boletos,
+            ultimo.status AS status_ultimo_boleto,
+            ultimo.data_vencimento AS ultimo_vencimento,
+            ultimo.boleto_url AS url_ultimo_boleto
         FROM locacoes l
         JOIN clientes c ON l.cliente_id = c.id
         JOIN equipment_items ei ON l.equipment_item_id = ei.id
-        WHERE l.cancelado = TRUE
+        LEFT JOIN (
+            SELECT
+                locacao_id,
+                COUNT(*) AS total_boletos,
+                COUNT(*) FILTER (WHERE status IN %s) AS boletos_pagos,
+                COUNT(*) FILTER (WHERE status = 'PENDING') AS boletos_pendentes,
+                COUNT(*) FILTER (WHERE status = 'OVERDUE') AS boletos_vencidos,
+                COUNT(*) FILTER (WHERE status IN ('CANCELED', 'REFUNDED', 'CHARGEBACK')) AS boletos_cancelados,
+                COALESCE(SUM(valor_pago), 0) AS total_recebido_boletos
+            FROM boletos
+            GROUP BY locacao_id
+        ) bcount ON bcount.locacao_id = l.id
+        LEFT JOIN LATERAL (
+            SELECT status, data_vencimento, boleto_url
+            FROM boletos b
+            WHERE b.locacao_id = l.id
+            ORDER BY data_vencimento DESC NULLS LAST, id DESC
+            LIMIT 1
+        ) ultimo ON TRUE
+        WHERE l.cancelado = TRUE AND l.company_id = %s
         ORDER BY l.data_inicio DESC
-    """)
+    """, (STATUS_RECEBIDO, current_user.company_id))
     locacoes = cur.fetchall()
     cur.close()
     conn.close()
