@@ -1,232 +1,800 @@
-{% extends "base.html" %}
+import datetime as dt
+import io
+import time
+import requests
+import psycopg2
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, send_from_directory, abort, Response
+from flask_login import login_required, current_user
+from xhtml2pdf import pisa
+from database import get_db_connection
+from config import Config
+import os
 
-{% block title %}Locações Canceladas{% endblock %}
+from permissions import requer_permissao, tem_permissao, VER_LOCACOES, CRIAR_LOCACAO, GERENCIAR_LOCACOES
+from contrato import gerar_contrato_pdf
+from multas import calcular_multa
+from estoque import registrar_movimentacao
+from assinaturas_core import salvar_assinatura, buscar_assinatura_recente
+from asaas_config import obter_config_asaas
+from relatorios import STATUS_RECEBIDO
+from cliente_status import cliente_precisa_atualizar_comprovante
 
-{% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h3 class="card-title mb-0">
-                        <i class="fas fa-ban text-danger me-2"></i>
-                        Locações Canceladas
-                    </h3>
-                    <a href="{{ url_for('locacoes.listar_locacoes') }}" class="btn btn-primary">
-                        <i class="fas fa-arrow-left me-1"></i>
-                        Voltar para Locações Ativas
-                    </a>
-                </div>
-                <div class="card-body">
-                    {% if locacoes %}
-                        <div class="table-responsive">
-                            <table class="table table-striped table-hover">
-                                <thead class="table-dark">
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Cliente</th>
-                                        <th>Equipamento</th>
-                                        <th>Período</th>
-                                        <th>Valor</th>
-                                        <th>Frequência</th>
-                                        <th>Tipo</th>
-                                        <th>Boletos</th>
-                                        <th>Status Pagamento</th>
-                                        <th>Total Recebido</th>
-                                        <th>Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for loc in locacoes %}
-                                    <tr>
-                                        <td>
-                                            <strong>#{{ loc.id }}</strong>
-                                        </td>
-                                        <td>{{ loc.cliente_nome }}</td>
-                                        <td>
-                                            <strong>{{ loc.equipamento_modelo }}</strong><br>
-                                            <small class="text-muted">{{ loc.equipamento_codigo }}</small>
-                                        </td>
-                                        <td>
-                                            <strong>Início:</strong> {{ loc.data_inicio.strftime('%d/%m/%Y') if loc.data_inicio else 'N/A' }}<br>
-                                            <strong>Fim:</strong> 
-                                            {% if loc.data_fim %}
-                                                <span class="text-danger">{{ loc.data_fim.strftime('%d/%m/%Y') }}</span>
-                                            {% else %}
-                                                <span class="text-muted">N/A</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            <strong>R$ {{ "%.2f"|format(loc.valor) }}</strong>
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-secondary">{{ loc.frequencia_pagamento|title }}</span>
-                                        </td>
-                                        <td>
-                                            {% if loc.asaas_subscription_id %}
-                                                <span class="badge bg-info">
-                                                    <i class="fas fa-sync-alt me-1"></i>
-                                                    Assinatura
-                                                </span>
-                                                <br><small class="text-muted">ID: {{ loc.asaas_subscription_id[:8] }}...</small>
-                                            {% elif loc.asaas_payment_id %}
-                                                <span class="badge bg-warning">
-                                                    <i class="fas fa-file-invoice me-1"></i>
-                                                    Pagamento Único
-                                                </span>
-                                                <br><small class="text-muted">ID: {{ loc.asaas_payment_id[:8] }}...</small>
-                                            {% else %}
-                                                <span class="badge bg-secondary">
-                                                    <i class="fas fa-question me-1"></i>
-                                                    Manual
-                                                </span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            {% if loc.total_boletos > 0 %}
-                                                <div class="small">
-                                                    <div><strong>Total:</strong> {{ loc.total_boletos }}</div>
-                                                    {% if loc.boletos_pagos > 0 %}
-                                                        <div class="text-success">
-                                                            <i class="fas fa-check-circle me-1"></i>
-                                                            Pagos: {{ loc.boletos_pagos }}
-                                                        </div>
-                                                    {% endif %}
-                                                    {% if loc.boletos_pendentes > 0 %}
-                                                        <div class="text-warning">
-                                                            <i class="fas fa-clock me-1"></i>
-                                                            Pendentes: {{ loc.boletos_pendentes }}
-                                                        </div>
-                                                    {% endif %}
-                                                    {% if loc.boletos_vencidos > 0 %}
-                                                        <div class="text-danger">
-                                                            <i class="fas fa-exclamation-triangle me-1"></i>
-                                                            Vencidos: {{ loc.boletos_vencidos }}
-                                                        </div>
-                                                    {% endif %}
-                                                    {% if loc.boletos_cancelados > 0 %}
-                                                        <div class="text-muted">
-                                                            <i class="fas fa-ban me-1"></i>
-                                                            Cancelados: {{ loc.boletos_cancelados }}
-                                                        </div>
-                                                    {% endif %}
-                                                </div>
-                                            {% else %}
-                                                <span class="text-muted">Nenhum boleto</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            {% if loc.status_ultimo_boleto %}
-                                                {% if loc.status_ultimo_boleto == 'RECEIVED' %}
-                                                    <span class="badge bg-success">
-                                                        <i class="fas fa-check me-1"></i>
-                                                        Pago
-                                                    </span>
-                                                {% elif loc.status_ultimo_boleto == 'PENDING' %}
-                                                    <span class="badge bg-warning">
-                                                        <i class="fas fa-clock me-1"></i>
-                                                        Pendente
-                                                    </span>
-                                                {% elif loc.status_ultimo_boleto == 'OVERDUE' %}
-                                                    <span class="badge bg-danger">
-                                                        <i class="fas fa-exclamation-triangle me-1"></i>
-                                                        Vencido
-                                                    </span>
-                                                {% elif loc.status_ultimo_boleto == 'CANCELED' %}
-                                                    <span class="badge bg-secondary">
-                                                        <i class="fas fa-ban me-1"></i>
-                                                        Cancelado
-                                                    </span>
-                                                {% else %}
-                                                    <span class="badge bg-secondary">{{ loc.status_ultimo_boleto }}</span>
-                                                {% endif %}
-                                                
-                                                {% if loc.ultimo_vencimento %}
-                                                    <br><small class="text-muted">
-                                                        Último: {{ loc.ultimo_vencimento.strftime('%d/%m/%Y') }}
-                                                    </small>
-                                                {% endif %}
-                                            {% elif loc.pagamento_status %}
-                                                {% if loc.pagamento_status == 'RECEIVED' %}
-                                                    <span class="badge bg-success">
-                                                        <i class="fas fa-check me-1"></i>
-                                                        Pago
-                                                    </span>
-                                                {% elif loc.pagamento_status == 'CANCELED' %}
-                                                    <span class="badge bg-secondary">
-                                                        <i class="fas fa-ban me-1"></i>
-                                                        Cancelado
-                                                    </span>
-                                                {% else %}
-                                                    <span class="badge bg-warning">{{ loc.pagamento_status }}</span>
-                                                {% endif %}
-                                            {% else %}
-                                                <span class="text-muted">N/A</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            {% if loc.total_recebido_boletos > 0 %}
-                                                <strong class="text-success">R$ {{ "%.2f"|format(loc.total_recebido_boletos) }}</strong>
-                                            {% elif loc.valor_pago %}
-                                                <strong class="text-success">R$ {{ "%.2f"|format(loc.valor_pago) }}</strong>
-                                            {% else %}
-                                                <span class="text-muted">R$ 0,00</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            <div class="btn-group-vertical btn-group-sm" role="group">
-                                                {% if loc.contrato_pdf %}
-                                                    <a href="{{ url_for('locacoes.uploaded_contract', filename=loc.contrato_pdf) }}" 
-                                                       class="btn btn-outline-primary btn-sm" target="_blank">
-                                                        <i class="fas fa-file-pdf me-1"></i>
-                                                        Contrato
-                                                    </a>
-                                                {% endif %}
-                                                
-                                                {% if loc.url_ultimo_boleto %}
-                                                    <a href="{{ loc.url_ultimo_boleto }}" 
-                                                       class="btn btn-outline-info btn-sm" target="_blank">
-                                                        <i class="fas fa-barcode me-1"></i>
-                                                        Último Boleto
-                                                    </a>
-                                                {% elif loc.boleto_url %}
-                                                    <a href="{{ loc.boleto_url }}" 
-                                                       class="btn btn-outline-info btn-sm" target="_blank">
-                                                        <i class="fas fa-barcode me-1"></i>
-                                                        Boleto
-                                                    </a>
-                                                {% endif %}
-                                                
-                                                {% if loc.total_boletos > 0 %}
-                                                    <a href="{{ url_for('locacoes.boletos_locacao', locacao_id=loc.id) }}" 
-                                                       class="btn btn-outline-secondary btn-sm">
-                                                        <i class="fas fa-list me-1"></i>
-                                                        Ver Boletos ({{ loc.total_boletos }})
-                                                    </a>
-                                                {% endif %}
-                                                
-                                                <a href="{{ url_for('servicos.servicos_locacao', locacao_id=loc.id) }}" 
-                                                   class="btn btn-outline-warning btn-sm">
-                                                    <i class="fas fa-tools me-1"></i>
-                                                    Serviços
-                                                </a>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    {% else %}
-                        <div class="text-center py-5">
-                            <i class="fas fa-smile fa-3x text-success mb-3"></i>
-                            <h4>Nenhuma locação cancelada!</h4>
-                            <p class="text-muted">Todas as locações estão ativas ou não há registros de cancelamento.</p>
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}
+locacoes_bp = Blueprint("locacoes", __name__, url_prefix="/locacoes")
+
+# ==== Listar locações ativas + Criar nova ====
+@locacoes_bp.route("/", methods=["GET", "POST"])
+@login_required
+@requer_permissao(VER_LOCACOES)
+def listar_locacoes():
+    if request.method == "POST" and not tem_permissao(CRIAR_LOCACAO):
+        flash("Você não tem permissão para criar locações.", "danger")
+        return redirect(url_for("locacoes.listar_locacoes"))
+
+    import traceback
+    from psycopg2.extras import RealDictCursor
+
+    breadcrumb = "inicio"
+
+    if request.method == "GET":
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        try:
+            # Locações ativas
+            cur.execute("""
+                SELECT l.id, c.nome AS cliente_nome, ei.modelo AS equipamento_modelo,
+                ei.codigo_interno AS equipamento_codigo,
+                l.data_inicio, l.data_fim, l.frequencia_pagamento,
+                l.contrato_arquivo, l.boleto_url, l.pagamento_status, l.valor_pago
+                FROM locacoes l
+                JOIN clientes c ON c.id = l.cliente_id
+                JOIN equipment_items ei ON ei.id = l.equipment_item_id
+                WHERE l.cancelado = FALSE AND l.company_id = %s
+                ORDER BY l.id DESC
+            """, (current_user.company_id,))
+            locacoes_rows = cur.fetchall()
+            locacoes = [{
+                "id": r["id"],
+                "cliente_nome": r["cliente_nome"],
+                "equipamento_modelo": r["equipamento_modelo"],
+                "equipamento_codigo": r["equipamento_codigo"],
+                "data_inicio": r["data_inicio"],
+                "data_fim": r["data_fim"],
+                "frequencia_pagamento": r["frequencia_pagamento"],
+                "contrato_arquivo": r["contrato_arquivo"],
+                "boleto_url": r["boleto_url"],
+                "pagamento_status": r["pagamento_status"],
+                "valor_pago": r["valor_pago"],
+            } for r in locacoes_rows]
+
+            # Clientes para o select
+            cur.execute("SELECT id, nome FROM clientes WHERE company_id = %s ORDER BY nome ASC", (current_user.company_id,))
+            clientes = [{"id": r["id"], "nome": r["nome"]} for r in cur.fetchall()]
+
+            # Equipamentos disponíveis, com os preços por frequência pro cálculo automático no front-end
+            cur.execute("""
+                SELECT id, modelo, codigo_interno AS codigo, valor_semanal, valor_mensal
+                FROM equipment_items
+                WHERE status = 'disponivel' AND company_id = %s ORDER BY modelo ASC
+            """, (current_user.company_id,))
+            equipamentos = [{
+                "id": r["id"], "modelo": r["modelo"], "codigo": r["codigo"],
+                "valor_semanal": float(r["valor_semanal"]) if r["valor_semanal"] is not None else None,
+                "valor_mensal": float(r["valor_mensal"]) if r["valor_mensal"] is not None else None,
+            } for r in cur.fetchall()]
+
+            return render_template("locacoes.html", locacoes=locacoes, clientes=clientes, equipamentos=equipamentos)
+        finally:
+            cur.close()
+            conn.close()
+
+    # POST: cria locação
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    try:
+        breadcrumb = "validando_campos"
+        cliente_id = request.form.get("cliente_id", type=int)
+        equipamento_id = request.form.get("equipamento_id", type=int)
+        data_inicio_str = (request.form.get("data_inicio") or "").strip()
+        data_fim_str = (request.form.get("data_fim") or "").strip() or None
+        observacoes = (request.form.get("observacoes") or "").strip() or None
+
+        freq_in = (request.form.get("frequencia_pagamento") or "").strip().upper()
+        mapping = {"SEMANAL": "WEEKLY", "MENSAL": "MONTHLY"}
+        frequencia = mapping.get(freq_in, freq_in)
+
+        if frequencia not in ("WEEKLY", "MONTHLY"):
+            flash("Frequência inválida. Selecione semanal ou mensal.", "warning")
+            return redirect(url_for("locacoes.listar_locacoes"))
+        if not cliente_id or not equipamento_id:
+            flash("Cliente e equipamento são obrigatórios.", "warning")
+            return redirect(url_for("locacoes.listar_locacoes"))
+        if not data_inicio_str:
+            flash("Data de início é obrigatória.", "warning")
+            return redirect(url_for("locacoes.listar_locacoes"))
+
+        breadcrumb = "parse_datas"
+        def parse_date_flexible(s):
+            if s is None or s == "":
+                return None
+            s = s.strip()
+            if "/" in s:  # dd/mm/aaaa
+                return dt.datetime.strptime(s, "%d/%m/%Y").date()
+            return dt.datetime.strptime(s, "%Y-%m-%d").date()  # yyyy-mm-dd
+
+        data_inicio = parse_date_flexible(data_inicio_str)
+        data_fim = parse_date_flexible(data_fim_str) if data_fim_str else None
+        if data_fim and data_fim < data_inicio:
+            flash("Data fim não pode ser anterior à data de início.", "warning")
+            return redirect(url_for("locacoes.listar_locacoes"))
+
+        breadcrumb = "buscar_cliente_equipamento"
+        cur.execute("SELECT asaas_id, nome, cpf, endereco FROM clientes WHERE id=%s", (cliente_id,))
+        cliente = cur.fetchone()
+        if not cliente:
+            flash("Cliente não encontrado.", "danger")
+            return redirect(url_for("locacoes.listar_locacoes"))
+        asaas_customer_id = cliente["asaas_id"]
+        if not asaas_customer_id:
+            flash("Cliente sem integração Asaas (asaas_id ausente).", "danger")
+            return redirect(url_for("locacoes.listar_locacoes"))
+
+        cur.execute("""
+            SELECT nome, modelo, codigo_interno, status, valor_semanal, valor_mensal
+            FROM equipment_items WHERE id=%s
+        """, (equipamento_id,))
+        equipamento = cur.fetchone()
+        if not equipamento:
+            flash("Equipamento não encontrado.", "danger")
+            return redirect(url_for("locacoes.listar_locacoes"))
+        if equipamento["status"] != "disponivel":
+            flash("Equipamento indisponível para locação.", "warning")
+            return redirect(url_for("locacoes.listar_locacoes"))
+
+        breadcrumb = "calcular_valor"
+        coluna_preco = "valor_semanal" if frequencia == "WEEKLY" else "valor_mensal"
+        valor = equipamento[coluna_preco]
+        if valor is None:
+            freq_label = "semanal" if frequencia == "WEEKLY" else "mensal"
+            flash(
+                f"Este equipamento não tem preço cadastrado para locação {freq_label}. "
+                f"Cadastre o preço no cadastro do equipamento antes de criar a locação.",
+                "warning",
+            )
+            return redirect(url_for("locacoes.listar_locacoes"))
+        valor = float(valor)
+
+        breadcrumb = "validar_assinatura"
+        assinatura_imagem = request.form.get("assinatura_imagem_contrato")
+        nome_assinante = (request.form.get("nome_assinante_contrato") or "").strip()
+        if not assinatura_imagem or not nome_assinante:
+            flash("A assinatura do contrato é obrigatória para criar a locação.", "warning")
+            return redirect(url_for("locacoes.listar_locacoes"))
+
+        breadcrumb = "criar_locacao"
+        try:
+            locacao_id = criar_locacao_interna(
+                cur, cliente, equipamento, cliente_id, equipamento_id,
+                data_inicio, data_fim, frequencia, valor, observacoes,
+                assinatura_dados={
+                    "imagem_base64": assinatura_imagem,
+                    "nome_assinante": nome_assinante,
+                    "request": request,
+                    "usuario_id": int(current_user.id),
+                    "cliente_id": cliente_id,
+                },
+            )
+        except AsaasError as e:
+            flash(str(e), "danger")
+            return redirect(url_for("locacoes.listar_locacoes"))
+        except ComprovanteDesatualizadoError as e:
+            flash(str(e), "warning")
+            return redirect(url_for("locacoes.listar_locacoes"))
+        except AcessoNegadoError as e:
+            flash(str(e), "danger")
+            return redirect(url_for("locacoes.listar_locacoes"))
+
+        conn.commit()
+        flash("Locação criada, contrato gerado em PDF e assinatura recorrente configurada no Asaas! "
+              "Preencha o checklist de entrega antes de liberar o equipamento.", "success")
+        return redirect(url_for("checklists.novo", locacao_id=locacao_id, tipo="entrega"))
+
+    except psycopg2.Error as e:
+        conn.rollback()
+        print("ERRO psycopg2 em", breadcrumb, "=>", e)
+        traceback.print_exc()
+        detalhe = getattr(e.diag, "message_detail", "")
+        msg = detalhe or (e.pgerror or str(e))
+        flash(f"Erro ao criar locação ({breadcrumb}): {msg}", "danger")
+    except ValueError as e:
+        conn.rollback()
+        print("ERRO ValueError em", breadcrumb, "=>", e)
+        traceback.print_exc()
+        flash(f"Data/valor inválido ({breadcrumb}): {str(e)}", "danger")
+    except Exception as e:
+        conn.rollback()
+        print("ERRO inesperado em", breadcrumb, "=>", e)
+        traceback.print_exc()
+        flash(f"Erro inesperado ao criar locação ({breadcrumb}): {repr(e)}", "danger")
+    finally:
+        cur.close()
+        conn.close()
+
+    return redirect(url_for("locacoes.listar_locacoes"))
+
+
+class AsaasError(Exception):
+    """Falha ao criar/consultar a assinatura no Asaas (ver mensagem para o motivo)."""
+    pass
+
+
+class ComprovanteDesatualizadoError(Exception):
+    """Cliente precisa reenviar o comprovante de residência antes de alugar de novo."""
+    pass
+
+
+class AcessoNegadoError(Exception):
+    """Cliente ou equipamento pertence a outra empresa (violação de isolamento multi-tenant)."""
+    pass
+
+
+# ==== Criação de locação (reaproveitada pelo formulário manual acima e pela conversão de orçamento) ====
+def criar_locacao_interna(cur, cliente, equipamento, cliente_id, equipamento_id,
+                           data_inicio, data_fim, frequencia, valor, observacoes,
+                           assinatura_dados=None):
+    """
+    Cria a assinatura no Asaas, grava a locação, atualiza o estoque do equipamento
+    e gera o contrato em PDF. Não faz commit — quem chama controla a transação.
+    Levanta AsaasError em vez de flash/redirect, para o chamador decidir o que fazer
+    (ex.: seguir convertendo os próximos itens de um orçamento mesmo se este falhar).
+
+    assinatura_dados, se informado, é um dict com imagem_base64/nome_assinante/request
+    (mais usuario_id/cliente_id/motivo_substituicao/substitui_assinatura_id opcionais)
+    — usado só pelo formulário manual (que já coleta a assinatura no canvas); a
+    conversão de orçamento (bloco 6) não passa isso, e o contrato sai sem
+    assinatura embutida nesse caso, como já era antes deste bloco.
+
+    Antes de qualquer outra coisa, valida que cliente_id e equipamento_id pertencem
+    à empresa do usuário logado — busca o company_id direto do banco (não confia no
+    dict já buscado pelo chamador), pra proteger a função mesmo que um chamador
+    futuro esqueça de filtrar por empresa. Levanta AcessoNegadoError caso não bata.
+
+    Retorna o id da locação criada.
+    """
+    company_id = current_user.company_id
+
+    cur.execute("SELECT company_id FROM clientes WHERE id=%s", (cliente_id,))
+    cliente_company = cur.fetchone()
+    if not cliente_company or cliente_company["company_id"] != company_id:
+        raise AcessoNegadoError(
+            "Cliente não encontrado ou não pertence à sua empresa. Requisição recusada."
+        )
+
+    cur.execute("SELECT company_id FROM equipment_items WHERE id=%s", (equipamento_id,))
+    equipamento_company = cur.fetchone()
+    if not equipamento_company or equipamento_company["company_id"] != company_id:
+        raise AcessoNegadoError(
+            "Equipamento não encontrado ou não pertence à sua empresa. Requisição recusada."
+        )
+
+    if cliente_precisa_atualizar_comprovante(cur, cliente_id):
+        raise ComprovanteDesatualizadoError(
+            f"{cliente['nome']} está sem alugar há mais de 90 dias e precisa reenviar o "
+            "comprovante de residência antes de criar uma nova locação. "
+            "Atualize o cadastro do cliente e tente novamente."
+        )
+
+    asaas_customer_id = cliente["asaas_id"]
+    if not asaas_customer_id:
+        raise AsaasError("Cliente sem integração Asaas (asaas_id ausente).")
+
+    modelo, placa = equipamento["modelo"], equipamento["codigo_interno"]
+
+    subscription_data = {
+        "customer": asaas_customer_id,
+        "billingType": "BOLETO",
+        "value": valor,
+        "cycle": frequencia,  # 'WEEKLY' ou 'MONTHLY'
+        "description": f"Locação {equipamento.get('nome') or modelo} - {placa} ({cliente['nome']})",
+        "nextDueDate": data_inicio.strftime("%Y-%m-%d"),
+    }
+    if data_fim:
+        subscription_data["endDate"] = data_fim.strftime("%Y-%m-%d")
+
+    asaas = obter_config_asaas(cur, current_user.company_id)
+    if not asaas["api_key"] or not asaas["base_url"]:
+        raise AsaasError("Configuração do Asaas ausente. Configure a chave da empresa em /configuracoes.")
+    try:
+        resp = requests.post(
+            f"{asaas['base_url']}/subscriptions",
+            headers={"access_token": asaas["api_key"]},
+            json=subscription_data,
+            timeout=30,
+        )
+    except requests.RequestException as rexc:
+        raise AsaasError(f"Falha de conexão com Asaas: {str(rexc)}") from rexc
+
+    if resp.status_code not in (200, 201):
+        body = resp.text if resp is not None else "<sem corpo>"
+        raise AsaasError(f"Erro do Asaas ({resp.status_code}): {body}")
+
+    asaas_subscription_id = resp.json().get("id")
+    if not asaas_subscription_id:
+        raise AsaasError("Resposta do Asaas não retornou id da assinatura.")
+
+    cur.execute("""
+        INSERT INTO locacoes (
+            cliente_id, equipment_item_id, data_inicio, data_fim,
+            valor, frequencia_pagamento, observacoes,
+            asaas_subscription_id
+        ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+        RETURNING id, company_id, data_inicio, valor, frequencia_pagamento
+    """, (
+        cliente_id, equipamento_id, data_inicio, data_fim,
+        valor, frequencia, observacoes,
+        asaas_subscription_id,
+    ))
+    locacao_row = cur.fetchone()
+    locacao_id = locacao_row["id"]
+
+    cur.execute(
+        "UPDATE equipment_items SET status='alugado', quantidade_disponivel=0 WHERE id=%s",
+        (equipamento_id,),
+    )
+    registrar_movimentacao(cur, equipamento_id, "saida", f"Locação #{locacao_id} criada", int(current_user.id))
+
+    cur.execute("SELECT nome, cnpj FROM companies WHERE id=%s", (locacao_row["company_id"],))
+    company = cur.fetchone()
+
+    assinatura_pdf = None
+    if assinatura_dados:
+        assinatura_id = salvar_assinatura(
+            cur,
+            upload_folder=current_app.config["UPLOAD_FOLDER"],
+            company_id=locacao_row["company_id"],
+            tipo_documento="contrato",
+            documento_id=locacao_id,
+            imagem_base64=assinatura_dados["imagem_base64"],
+            nome_assinante=assinatura_dados["nome_assinante"],
+            request=assinatura_dados["request"],
+            usuario_id=assinatura_dados.get("usuario_id"),
+            cliente_id=assinatura_dados.get("cliente_id"),
+            motivo_substituicao=assinatura_dados.get("motivo_substituicao"),
+            substitui_assinatura_id=assinatura_dados.get("substitui_assinatura_id"),
+        )
+        cur.execute("SELECT * FROM assinaturas WHERE id=%s", (assinatura_id,))
+        assinatura_row = cur.fetchone()
+        # imagem_base64 já vem como data-URL completa (canvas.toDataURL()),
+        # reaproveitada direto no <img src="..."> do PDF.
+        assinatura_pdf = {
+            "imagem_data_uri": assinatura_dados["imagem_base64"],
+            "nome_assinante": assinatura_row["nome_assinante"],
+            "data_hora": assinatura_row["data_hora"].strftime("%d/%m/%Y %H:%M"),
+            "ip_address": assinatura_row["ip_address"],
+        }
+
+    pdf_bytes = gerar_contrato_pdf(locacao_row, cliente, equipamento, company, assinatura=assinatura_pdf)
+    pasta_contratos = os.path.join(current_app.config["UPLOAD_FOLDER"], "contratos")
+    os.makedirs(pasta_contratos, exist_ok=True)
+    contrato_filename = f"contrato_{locacao_id}_{int(time.time() * 1000)}.pdf"
+    with open(os.path.join(pasta_contratos, contrato_filename), "wb") as f:
+        f.write(pdf_bytes)
+
+    cur.execute("UPDATE locacoes SET contrato_arquivo=%s WHERE id=%s", (contrato_filename, locacao_id))
+
+    return locacao_id
+
+
+# ==== Editar locação + listar boletos ====
+@locacoes_bp.route("/<int:id>/editar", methods=["GET", "POST"])
+@login_required
+@requer_permissao(GERENCIAR_LOCACOES)
+def editar_locacao(id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    if request.method == "POST":
+        data_inicio = request.form["data_inicio"]
+        data_fim = request.form.get("data_fim") or None
+        valor = request.form["valor"]
+        frequencia = request.form["frequencia_pagamento"]
+        observacoes = request.form.get("observacoes")
+
+        try:
+            cur.execute(
+                "SELECT asaas_subscription_id, company_id FROM locacoes WHERE id=%s AND company_id=%s",
+                (id, current_user.company_id),
+            )
+            row = cur.fetchone()
+            if not row:
+                flash("Locação não encontrada.", "danger")
+                return redirect(url_for("locacoes.listar_locacoes"))
+
+            cur.execute("""
+                UPDATE locacoes SET data_inicio=%s, data_fim=%s, valor=%s,
+                frequencia_pagamento=%s, observacoes=%s WHERE id=%s AND company_id=%s
+            """, (data_inicio, data_fim, valor, frequencia, observacoes, id, current_user.company_id))
+
+            asaas_subscription_id = row["asaas_subscription_id"]
+            locacao_company_id = row["company_id"]
+
+            if asaas_subscription_id:
+                patch_data = {"value": float(valor), "cycle": frequencia}
+                if data_inicio:
+                    patch_data["nextDueDate"] = data_inicio
+                if data_fim:
+                    patch_data["endDate"] = data_fim
+
+                asaas = obter_config_asaas(cur, locacao_company_id)
+                resp = requests.post(
+                    f"{asaas['base_url']}/subscriptions/{asaas_subscription_id}",
+                    headers={"access_token": asaas["api_key"]},
+                    json=patch_data,
+                    timeout=30
+                )
+                if resp.status_code not in (200, 201):
+                    resp = requests.put(
+                        f"{asaas['base_url']}/subscriptions/{asaas_subscription_id}",
+                        headers={"access_token": asaas["api_key"]},
+                        json=patch_data,
+                        timeout=30
+                    )
+                if resp.status_code not in (200, 201):
+                    flash(f"Locação atualizada, mas falhou no Asaas: {resp.text}", "warning")
+                else:
+                    flash("Locação e assinatura atualizadas!", "success")
+            else:
+                flash("Locação e assinatura atualizadas!", "success")
+
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            flash(f"Erro ao atualizar locação: {e}", "danger")
+        finally:
+            cur.close()
+            conn.close()
+        return redirect(url_for("locacoes.editar_locacao", id=id))
+
+    # Método GET: buscar dados para exibir no formulário
+    cur.execute("""
+        SELECT id, cliente_id, moto_id, equipment_item_id, company_id, cancelado,
+        data_inicio, data_fim, valor, frequencia_pagamento, observacoes, asaas_subscription_id
+        FROM locacoes WHERE id=%s AND company_id=%s
+    """, (id, current_user.company_id))
+    locacao = cur.fetchone()
+
+    if not locacao:
+        flash("Locação não encontrada.", "warning")
+        cur.close()
+        conn.close()
+        return redirect(url_for("locacoes.listar_locacoes"))
+
+    cur.execute("""
+        SELECT id, asaas_payment_id, status, valor, valor_pago, boleto_url,
+        descricao, data_vencimento, data_pagamento
+        FROM boletos WHERE locacao_id=%s
+        ORDER BY data_vencimento DESC NULLS LAST, id DESC
+    """, (id,))
+    boletos = cur.fetchall()
+
+    multa = None
+    if locacao["cancelado"]:
+        cur.execute(
+            "SELECT dias_atraso_final, valor_multa_final FROM checklists WHERE locacao_id=%s AND tipo='devolucao'",
+            (id,),
+        )
+        checklist_devolucao = cur.fetchone()
+        if checklist_devolucao and checklist_devolucao["dias_atraso_final"]:
+            multa = {
+                "dias_atraso": checklist_devolucao["dias_atraso_final"],
+                "valor_multa_total": float(checklist_devolucao["valor_multa_final"] or 0),
+                "final": True,
+            }
+    else:
+        cur.execute("SELECT valor_diaria FROM equipment_items WHERE id=%s", (locacao["equipment_item_id"],))
+        equipamento = cur.fetchone()
+        cur.execute("SELECT * FROM config_multas WHERE company_id=%s", (locacao["company_id"],))
+        config = cur.fetchone()
+        calculo = calcular_multa(
+            locacao["data_fim"], dt.date.today(), locacao["valor"],
+            equipamento["valor_diaria"] if equipamento else None, config,
+        )
+        if calculo["dias_atraso"] > 0:
+            calculo["final"] = False
+            multa = calculo
+
+    assinatura_contrato = buscar_assinatura_recente(cur, "contrato", id)
+
+    cur.close()
+    conn.close()
+    return render_template(
+        "editar_locacao.html", locacao=locacao, boletos=boletos, multa=multa,
+        assinatura_contrato=assinatura_contrato,
+    )
+
+# ==== Listar locações canceladas ====
+@locacoes_bp.route("/canceladas")
+@login_required
+@requer_permissao(GERENCIAR_LOCACOES)
+def canceladas():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT
+            l.id, l.data_inicio, l.data_fim, l.valor, l.frequencia_pagamento,
+            l.pagamento_status, l.valor_pago, l.asaas_subscription_id, l.asaas_payment_id, l.boleto_url,
+            l.contrato_arquivo,
+            c.nome AS cliente_nome, ei.modelo AS equipamento_modelo, ei.codigo_interno AS equipamento_codigo,
+            COALESCE(bcount.total_boletos, 0) AS total_boletos,
+            COALESCE(bcount.boletos_pagos, 0) AS boletos_pagos,
+            COALESCE(bcount.boletos_pendentes, 0) AS boletos_pendentes,
+            COALESCE(bcount.boletos_vencidos, 0) AS boletos_vencidos,
+            COALESCE(bcount.boletos_cancelados, 0) AS boletos_cancelados,
+            COALESCE(bcount.total_recebido_boletos, 0) AS total_recebido_boletos,
+            ultimo.status AS status_ultimo_boleto,
+            ultimo.data_vencimento AS ultimo_vencimento,
+            ultimo.boleto_url AS url_ultimo_boleto
+        FROM locacoes l
+        JOIN clientes c ON l.cliente_id = c.id
+        JOIN equipment_items ei ON l.equipment_item_id = ei.id
+        LEFT JOIN (
+            SELECT
+                locacao_id,
+                COUNT(*) AS total_boletos,
+                COUNT(*) FILTER (WHERE status IN %s) AS boletos_pagos,
+                COUNT(*) FILTER (WHERE status = 'PENDING') AS boletos_pendentes,
+                COUNT(*) FILTER (WHERE status = 'OVERDUE') AS boletos_vencidos,
+                COUNT(*) FILTER (WHERE status IN ('CANCELED', 'REFUNDED', 'CHARGEBACK')) AS boletos_cancelados,
+                COALESCE(SUM(valor_pago), 0) AS total_recebido_boletos
+            FROM boletos
+            GROUP BY locacao_id
+        ) bcount ON bcount.locacao_id = l.id
+        LEFT JOIN LATERAL (
+            SELECT status, data_vencimento, boleto_url
+            FROM boletos b
+            WHERE b.locacao_id = l.id
+            ORDER BY data_vencimento DESC NULLS LAST, id DESC
+            LIMIT 1
+        ) ultimo ON TRUE
+        WHERE l.cancelado = TRUE AND l.company_id = %s
+        ORDER BY l.data_inicio DESC
+    """, (STATUS_RECEBIDO, current_user.company_id))
+    locacoes = cur.fetchall()
+    cur.close()
+    conn.close()
+    return render_template("locacoes_canceladas.html", locacoes=locacoes)
+
+# ==== Lógica de cancelamento (reaproveitada por cancelar_locacao e pelo checklist de devolução) ====
+def executar_cancelamento_locacao(cur, locacao_id, equipamento_id, asaas_subscription_id, company_id):
+    """Cancela a assinatura no Asaas (se existir) e libera o equipamento. Não faz commit — quem chama controla a transação."""
+    if asaas_subscription_id:
+        asaas = obter_config_asaas(cur, company_id)
+        resp = requests.post(
+            f"{asaas['base_url']}/subscriptions/{asaas_subscription_id}/cancel",
+            headers={"access_token": asaas["api_key"]},
+            timeout=30
+        )
+        if resp.status_code not in (200, 201):
+            flash(f"Falha ao cancelar assinatura no Asaas: {resp.text}", "warning")
+
+    hoje = dt.date.today().strftime("%Y-%m-%d")
+    cur.execute("UPDATE locacoes SET cancelado=TRUE, data_fim=%s WHERE id=%s", (hoje, locacao_id))
+    registrar_movimentacao(cur, equipamento_id, "entrada", f"Locação #{locacao_id} finalizada", int(current_user.id))
+    cur.execute(
+        "UPDATE equipment_items SET status='disponivel', quantidade_disponivel=1 WHERE id=%s",
+        (equipamento_id,),
+    )
+
+
+# ==== Cancelar locação específica ====
+@locacoes_bp.route("/<int:id>/cancelar", methods=["POST"])
+@login_required
+@requer_permissao(GERENCIAR_LOCACOES)
+def cancelar_locacao(id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "SELECT asaas_subscription_id, equipment_item_id, company_id FROM locacoes WHERE id=%s AND company_id=%s",
+            (id, current_user.company_id),
+        )
+        row = cur.fetchone()
+        if not row:
+            flash("Locação não encontrada.", "danger")
+            return redirect(url_for("locacoes.listar_locacoes"))
+
+        cur.execute("SELECT 1 FROM checklists WHERE locacao_id=%s AND tipo='devolucao'", (id,))
+        if not cur.fetchone():
+            flash("Preencha o checklist de devolução antes de finalizar esta locação.", "warning")
+            return redirect(url_for("checklists.novo", locacao_id=id, tipo="devolucao"))
+
+        if isinstance(row, dict):
+            asaas_subscription_id = row.get("asaas_subscription_id")
+            equipamento_id = row.get("equipment_item_id")
+            locacao_company_id = row.get("company_id")
+        else:
+            asaas_subscription_id = row[0]
+            equipamento_id = row[1]
+            locacao_company_id = row[2]
+
+        executar_cancelamento_locacao(cur, id, equipamento_id, asaas_subscription_id, locacao_company_id)
+        conn.commit()
+        flash("Locação cancelada!", "info")
+
+    except psycopg2.Error as e:
+        conn.rollback()
+        motivo = e.pgerror or str(e)
+        detalhe = getattr(e.diag, "message_detail", "")
+        if detalhe:
+            flash(f"Erro ao cancelar locação: {detalhe}", "danger")
+        else:
+            flash(f"Erro ao cancelar locação: {motivo}", "danger")
+
+    except Exception as e:
+        conn.rollback()
+        print(f"Erro inesperado ao cancelar locação: {repr(e)} (tipo: {type(e)})")
+        flash(f"Erro inesperado ao cancelar locação: {repr(e)}", "danger")
+
+    finally:
+        cur.close()
+        conn.close()
+    return redirect(url_for("locacoes.listar_locacoes"))
+
+# ==== Sincronizar boletos manualmente ====
+@locacoes_bp.route("/<int:id>/sincronizar_boletos", methods=["GET"])
+@login_required
+@requer_permissao(GERENCIAR_LOCACOES)
+def sincronizar_boletos_manual(id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "SELECT asaas_subscription_id, company_id FROM locacoes WHERE id=%s AND company_id=%s",
+            (id, current_user.company_id),
+        )
+        row = cur.fetchone()
+        if not row or not row["asaas_subscription_id"]:
+            flash("Assinatura Asaas não vinculada à locação.", "warning")
+            return redirect(url_for("locacoes.editar_locacao", id=id))
+
+        sub_id = row["asaas_subscription_id"]
+        asaas = obter_config_asaas(cur, row["company_id"])
+        url = f"{asaas['base_url']}/payments?subscription={sub_id}&limit=100"
+        resp = requests.get(url, headers={"access_token": asaas["api_key"]}, timeout=30)
+        if resp.status_code not in (200, 201):
+            flash(f"Erro ao consultar boletos no Asaas: {resp.text}", "danger")
+            return redirect(url_for("locacoes.editar_locacao", id=id))
+
+        data = resp.json()
+        items = data.get("data", []) if isinstance(data, dict) else []
+
+        inseridos, atualizados = 0, 0
+        for p in items:
+            asaas_payment_id = p.get("id")
+            status = p.get("status")
+            valor = p.get("value")
+            net_value = p.get("netValue")
+            boleto_url = p.get("bankSlipUrl")
+            descricao = p.get("description")
+            due_date = p.get("dueDate")
+            payment_date = p.get("paymentDate")
+
+            cur.execute("SELECT id FROM boletos WHERE asaas_payment_id=%s", (asaas_payment_id,))
+            existe = cur.fetchone()
+            if existe:
+                cur.execute("""
+                    UPDATE boletos
+                    SET status=%s, valor=%s, valor_pago=%s, boleto_url=%s,
+                    descricao=%s, data_vencimento=%s, data_pagamento=%s
+                    WHERE asaas_payment_id=%s
+                """, (status, valor, net_value, boleto_url,
+                      descricao, due_date, payment_date, asaas_payment_id))
+                atualizados += 1
+            else:
+                cur.execute("""
+                    INSERT INTO boletos (locacao_id, asaas_payment_id, status, valor,
+                    valor_pago, boleto_url, descricao,
+                    data_vencimento, data_pagamento)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                """, (id, asaas_payment_id, status, valor, net_value,
+                      boleto_url, descricao, due_date, payment_date))
+                inseridos += 1
+
+        conn.commit()
+        flash(f"Boletos sincronizados! Inseridos: {inseridos}, Atualizados: {atualizados}.", "success")
+    except Exception as e:
+        conn.rollback()
+        flash(f"Erro ao sincronizar boletos: {e}", "danger")
+    finally:
+        cur.close()
+        conn.close()
+    return redirect(url_for("locacoes.editar_locacao", id=id))
+
+
+# ==== Servir PDF de contratos ====
+@locacoes_bp.route("/contrato/<int:locacao_id>/pdf")
+@login_required
+@requer_permissao(VER_LOCACOES)
+def contrato_pdf(locacao_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "SELECT contrato_arquivo FROM locacoes WHERE id = %s AND company_id = %s",
+            (locacao_id, current_user.company_id),
+        )
+        result = cur.fetchone()
+        if not result or not result["contrato_arquivo"]:
+            flash("Contrato não encontrado.", "warning")
+            return redirect(url_for("locacoes.listar_locacoes"))
+        contrato_arquivo = result["contrato_arquivo"]
+
+        uploads_dir = os.path.join(current_app.config["UPLOAD_FOLDER"], "contratos")
+        return send_from_directory(directory=uploads_dir, path=contrato_arquivo)
+    finally:
+        cur.close()
+        conn.close()
+
+
+# ==== Gerar recibo de locação paga (PDF na hora, não fica salvo em disco) ====
+@locacoes_bp.route("/recibo/<int:locacao_id>/pdf")
+@login_required
+@requer_permissao(VER_LOCACOES)
+def recibo_pdf(locacao_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT id, cliente_id, equipment_item_id, company_id, data_inicio,
+                   valor, valor_pago, pagamento_status
+            FROM locacoes WHERE id=%s AND company_id=%s
+        """, (locacao_id, current_user.company_id))
+        locacao = cur.fetchone()
+        if not locacao:
+            flash("Locação não encontrada.", "warning")
+            return redirect(url_for("locacoes.listar_locacoes"))
+
+        if locacao["pagamento_status"] not in STATUS_RECEBIDO:
+            flash("Essa locação ainda não tem pagamento confirmado.", "warning")
+            return redirect(url_for("locacoes.listar_locacoes"))
+
+        cur.execute("SELECT nome, cpf FROM clientes WHERE id=%s", (locacao["cliente_id"],))
+        cliente = cur.fetchone()
+
+        cur.execute(
+            "SELECT nome, modelo, codigo_interno FROM equipment_items WHERE id=%s",
+            (locacao["equipment_item_id"],),
+        )
+        equipamento = cur.fetchone()
+
+        cur.execute("SELECT nome, cnpj FROM companies WHERE id=%s", (locacao["company_id"],))
+        company = cur.fetchone()
+
+        valor = locacao["valor_pago"] if locacao["valor_pago"] is not None else (locacao["valor"] or 0)
+        data_inicio = locacao["data_inicio"]
+
+        html = render_template(
+            "recibo_pdf.html",
+            locacao=locacao,
+            cliente=cliente,
+            equipamento=equipamento,
+            company=company,
+            valor_formatado=f"R$ {valor:.2f}".replace(".", ","),
+            data_inicio_formatada=data_inicio.strftime("%d/%m/%Y") if hasattr(data_inicio, "strftime") else data_inicio,
+            data_emissao_formatada=dt.date.today().strftime("%d/%m/%Y"),
+        )
+
+        pdf_buffer = io.BytesIO()
+        resultado = pisa.CreatePDF(html, dest=pdf_buffer)
+        if resultado.err:
+            flash("Erro ao gerar o PDF do recibo.", "danger")
+            return redirect(url_for("locacoes.listar_locacoes"))
+
+        return Response(
+            pdf_buffer.getvalue(),
+            mimetype="application/pdf",
+            headers={"Content-Disposition": f"inline; filename=recibo_locacao_{locacao_id}.pdf"},
+        )
+    finally:
+        cur.close()
+        conn.close()
