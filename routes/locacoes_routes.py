@@ -266,7 +266,7 @@ def criar_locacao_interna(cur, cliente, equipamento, cliente_id, equipamento_id,
         "billingType": "BOLETO",
         "value": valor,
         "cycle": frequencia,  # 'WEEKLY' ou 'MONTHLY'
-        "description": f"Locação moto {modelo} - {placa} ({cliente['nome']})",
+        "description": f"Locação {equipamento.get('nome') or modelo} - {placa} ({cliente['nome']})",
         "nextDueDate": data_inicio.strftime("%Y-%m-%d"),
     }
     if data_fim:
