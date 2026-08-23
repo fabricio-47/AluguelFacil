@@ -25,7 +25,7 @@
                                     <tr>
                                         <th>ID</th>
                                         <th>Cliente</th>
-                                        <th>Moto</th>
+                                        <th>Equipamento</th>
                                         <th>Período</th>
                                         <th>Valor</th>
                                         <th>Frequência</th>
@@ -44,8 +44,8 @@
                                         </td>
                                         <td>{{ loc.cliente_nome }}</td>
                                         <td>
-                                            <strong>{{ loc.moto_modelo }}</strong><br>
-                                            <small class="text-muted">{{ loc.moto_placa }}</small>
+                                            <strong>{{ loc.equipamento_modelo }}</strong><br>
+                                            <small class="text-muted">{{ loc.equipamento_codigo }}</small>
                                         </td>
                                         <td>
                                             <strong>Início:</strong> {{ loc.data_inicio.strftime('%d/%m/%Y') if loc.data_inicio else 'N/A' }}<br>
