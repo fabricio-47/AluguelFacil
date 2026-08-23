@@ -20,16 +20,16 @@
         <label class="form-label d-block">Documento atual</label>
         {% set arquivo = equipamento.documento_arquivo %}
         {% if arquivo and '.pdf' in arquivo|lower %}
-          <a href="{{ url_for('equipamentos.serve_documento_equipamento', filename=arquivo) }}"
+          <a href="{{ url_for('equipamentos.serve_documento_equipamento', equipamento_id=equipamento.id, filename=arquivo) }}"
             target="_blank" class="btn btn-outline-primary btn-sm me-2" title="Ver PDF">
             <i class="fa-solid fa-file-pdf me-1"></i> Ver PDF
           </a>
         {% else %}
           <div class="mb-2">
-            <img src="{{ url_for('equipamentos.serve_documento_equipamento', filename=arquivo) }}"
+            <img src="{{ url_for('equipamentos.serve_documento_equipamento', equipamento_id=equipamento.id, filename=arquivo) }}"
                 class="img-fluid rounded border" style="max-width: 520px;" alt="Documento do equipamento">
           </div>
-          <a href="{{ url_for('equipamentos.serve_documento_equipamento', filename=arquivo) }}"
+          <a href="{{ url_for('equipamentos.serve_documento_equipamento', equipamento_id=equipamento.id, filename=arquivo) }}"
             target="_blank" class="btn btn-outline-primary btn-sm" title="Abrir em nova aba">
             <i class="fa-solid fa-up-right-from-square me-1"></i> Abrir em nova aba
           </a>
