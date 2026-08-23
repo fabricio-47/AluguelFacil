@@ -481,7 +481,7 @@ def canceladas():
     cur.execute("""
         SELECT l.id, l.data_inicio, l.data_fim, l.valor, l.frequencia_pagamento,
         l.pagamento_status, l.valor_pago, l.asaas_subscription_id, l.boleto_url,
-        c.nome AS cliente_nome, ei.modelo AS moto_modelo, ei.codigo_interno AS moto_placa
+        c.nome AS cliente_nome, ei.modelo AS equipamento_modelo, ei.codigo_interno AS equipamento_codigo
         FROM locacoes l
         JOIN clientes c ON l.cliente_id = c.id
         JOIN equipment_items ei ON l.equipment_item_id = ei.id
