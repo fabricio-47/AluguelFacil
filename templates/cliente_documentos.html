@@ -63,7 +63,7 @@
               <i class="fa-solid fa-file-pdf fa-3x text-danger"></i>
             </div>
           {% else %}
-            <img src="{{ url_for('clientes.uploaded_documento', filename=doc.arquivo) }}"
+            <img src="{{ url_for('clientes.uploaded_documento', cliente_id=cliente.id, filename=doc.arquivo) }}"
                  class="card-img-top" alt="Documento do cliente" style="height: 200px; object-fit: cover;">
           {% endif %}
           <div class="card-body text-center">
@@ -73,7 +73,7 @@
             {% if doc.data_upload %}
               <small class="text-muted d-block mb-2">Enviado em {{ doc.data_upload }}</small>
             {% endif %}
-            <a href="{{ url_for('clientes.uploaded_documento', filename=doc.arquivo) }}" target="_blank"
+            <a href="{{ url_for('clientes.uploaded_documento', cliente_id=cliente.id, filename=doc.arquivo) }}" target="_blank"
                class="btn btn-sm btn-outline-primary mb-1">
               <i class="fa-solid fa-eye me-1"></i> Ver
             </a>
