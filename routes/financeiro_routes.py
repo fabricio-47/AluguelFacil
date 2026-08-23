@@ -70,13 +70,15 @@ def listar_despesas():
             flash("Descrição, valor e data de vencimento são obrigatórios.", "warning")
             return redirect(url_for("financeiro.listar_despesas"))
 
+        campos["company_id"] = current_user.company_id
+
         try:
             cur.execute("""
                 INSERT INTO despesas (
                     categoria, descricao, valor, data_vencimento, data_pagamento,
-                    status, fornecedor, forma_pagamento, observacoes
+                    status, fornecedor, forma_pagamento, observacoes, company_id
                 ) VALUES (%(categoria)s,%(descricao)s,%(valor)s,%(data_vencimento)s,%(data_pagamento)s,
-                    %(status)s,%(fornecedor)s,%(forma_pagamento)s,%(observacoes)s)
+                    %(status)s,%(fornecedor)s,%(forma_pagamento)s,%(observacoes)s,%(company_id)s)
             """, campos)
             conn.commit()
             flash("Despesa cadastrada com sucesso!", "success")
@@ -93,8 +95,9 @@ def listar_despesas():
         SELECT id, categoria, descricao, valor, data_vencimento, data_pagamento,
                fornecedor, forma_pagamento, {STATUS_EXIBIDO_SQL} AS status_exibido
         FROM despesas
+        WHERE company_id = %s
         ORDER BY data_vencimento DESC, id DESC
-    """)
+    """, (current_user.company_id,))
     despesas = cur.fetchall()
     cur.close()
     conn.close()
@@ -116,6 +119,8 @@ def editar_despesa(id):
         if not campos["descricao"] or not campos["valor"] or not campos["data_vencimento"]:
             flash("Descrição, valor e data de vencimento são obrigatórios.", "warning")
         else:
+            campos["id"] = id
+            campos["company_id"] = current_user.company_id
             try:
                 cur.execute("""
                     UPDATE despesas SET
@@ -123,8 +128,12 @@ def editar_despesa(id):
                         data_vencimento=%(data_vencimento)s, data_pagamento=%(data_pagamento)s,
                         status=%(status)s, fornecedor=%(fornecedor)s,
                         forma_pagamento=%(forma_pagamento)s, observacoes=%(observacoes)s
-                    WHERE id=%(id)s
-                """, {**campos, "id": id})
+                    WHERE id=%(id)s AND company_id=%(company_id)s
+                """, campos)
+                if cur.rowcount == 0:
+                    conn.rollback()
+                    flash("Despesa não encontrada.", "danger")
+                    return redirect(url_for("financeiro.listar_despesas"))
                 conn.commit()
                 flash("Despesa atualizada com sucesso!", "success")
                 return redirect(url_for("financeiro.listar_despesas"))
@@ -135,8 +144,8 @@ def editar_despesa(id):
     cur.execute("""
         SELECT id, categoria, descricao, valor, data_vencimento, data_pagamento,
                status, fornecedor, forma_pagamento, observacoes
-        FROM despesas WHERE id=%s
-    """, (id,))
+        FROM despesas WHERE id=%s AND company_id=%s
+    """, (id, current_user.company_id))
     despesa = cur.fetchone()
     cur.close()
     conn.close()
@@ -158,9 +167,13 @@ def excluir_despesa(id):
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        cur.execute("DELETE FROM despesas WHERE id=%s", (id,))
-        conn.commit()
-        flash("Despesa excluída com sucesso!", "info")
+        cur.execute("DELETE FROM despesas WHERE id=%s AND company_id=%s", (id, current_user.company_id))
+        if cur.rowcount == 0:
+            conn.rollback()
+            flash("Despesa não encontrada.", "warning")
+        else:
+            conn.commit()
+            flash("Despesa excluída com sucesso!", "info")
     except Exception as e:
         conn.rollback()
         flash(f"Erro ao excluir despesa: {e}", "danger")
@@ -183,13 +196,17 @@ def fluxo_caixa():
     conn = get_db_connection()
     cur = conn.cursor()
 
+    # boletos não tem company_id próprio — o isolamento por empresa passa
+    # obrigatoriamente pelo JOIN com locacoes.
     cur.execute("""
         SELECT b.data_pagamento AS data, b.valor_pago AS valor,
                COALESCE(b.descricao, 'Boleto locação #' || b.locacao_id) AS descricao
         FROM boletos b
+        JOIN locacoes l ON l.id = b.locacao_id
         WHERE b.status IN ('RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH')
           AND b.data_pagamento BETWEEN %s AND %s
-    """, (data_inicio, data_fim))
+          AND l.company_id = %s
+    """, (data_inicio, data_fim, current_user.company_id))
     entradas = [{"data": r["data"], "valor": float(r["valor"] or 0), "descricao": r["descricao"], "tipo": "entrada"}
                 for r in cur.fetchall()]
 
@@ -197,7 +214,8 @@ def fluxo_caixa():
         SELECT data_pagamento AS data, valor, descricao
         FROM despesas
         WHERE status = 'pago' AND data_pagamento BETWEEN %s AND %s
-    """, (data_inicio, data_fim))
+          AND company_id = %s
+    """, (data_inicio, data_fim, current_user.company_id))
     saidas = [{"data": r["data"], "valor": float(r["valor"] or 0), "descricao": r["descricao"], "tipo": "saida"}
               for r in cur.fetchall()]
 
@@ -234,29 +252,39 @@ def home():
     cur = conn.cursor()
 
     cur.execute("""
-        SELECT COALESCE(SUM(COALESCE(valor_pago, 0)), 0) AS total
-        FROM boletos
-        WHERE status IN ('RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH')
-          AND data_pagamento >= %s AND data_pagamento < %s
-    """, (primeiro_dia_mes, primeiro_dia_prox_mes))
+        SELECT COALESCE(SUM(COALESCE(b.valor_pago, 0)), 0) AS total
+        FROM boletos b
+        JOIN locacoes l ON l.id = b.locacao_id
+        WHERE b.status IN ('RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH')
+          AND b.data_pagamento >= %s AND b.data_pagamento < %s
+          AND l.company_id = %s
+    """, (primeiro_dia_mes, primeiro_dia_prox_mes, current_user.company_id))
     faturamento_mes = float(cur.fetchone()["total"])
 
     cur.execute("""
-        SELECT COALESCE(SUM(valor), 0) AS total FROM boletos WHERE status IN ('PENDING', 'OVERDUE')
-    """)
+        SELECT COALESCE(SUM(b.valor), 0) AS total
+        FROM boletos b
+        JOIN locacoes l ON l.id = b.locacao_id
+        WHERE b.status IN ('PENDING', 'OVERDUE')
+          AND l.company_id = %s
+    """, (current_user.company_id,))
     valor_a_receber = float(cur.fetchone()["total"])
 
     cur.execute("""
-        SELECT COALESCE(SUM(valor), 0) AS total FROM boletos
-        WHERE status IN ('PENDING', 'OVERDUE')
-          AND data_vencimento >= %s AND data_vencimento < %s
-    """, (primeiro_dia_mes, primeiro_dia_prox_mes))
+        SELECT COALESCE(SUM(b.valor), 0) AS total
+        FROM boletos b
+        JOIN locacoes l ON l.id = b.locacao_id
+        WHERE b.status IN ('PENDING', 'OVERDUE')
+          AND b.data_vencimento >= %s AND b.data_vencimento < %s
+          AND l.company_id = %s
+    """, (primeiro_dia_mes, primeiro_dia_prox_mes, current_user.company_id))
     a_receber_no_mes = float(cur.fetchone()["total"])
 
     cur.execute("""
         SELECT COALESCE(SUM(valor), 0) AS total FROM despesas
         WHERE data_vencimento >= %s AND data_vencimento < %s
-    """, (primeiro_dia_mes, primeiro_dia_prox_mes))
+          AND company_id = %s
+    """, (primeiro_dia_mes, primeiro_dia_prox_mes, current_user.company_id))
     despesas_mes = float(cur.fetchone()["total"])
 
     cur.close()
