@@ -3,7 +3,7 @@ import os
 import time
 import psycopg2
 import qrcode
-from flask import Blueprint, render_template, request, redirect, url_for, flash, send_from_directory, current_app, Response
+from flask import Blueprint, render_template, request, redirect, url_for, flash, send_from_directory, current_app, Response, abort
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from database import get_db_connection
@@ -147,11 +147,12 @@ def listar_equipamentos():
                ei.foto, ei.documento_arquivo, ec.nome AS categoria_nome
         FROM equipment_items ei
         LEFT JOIN equipment_categories ec ON ec.id = ei.categoria_id
+        WHERE ei.company_id = %s
         ORDER BY ei.nome
-    """)
+    """, (current_user.company_id,))
     equipamentos = cur.fetchall()
 
-    cur.execute("SELECT id, nome FROM equipment_categories ORDER BY nome")
+    cur.execute("SELECT id, nome FROM equipment_categories WHERE company_id = %s ORDER BY nome", (current_user.company_id,))
     categorias = cur.fetchall()
 
     cur.close()
@@ -174,10 +175,21 @@ def editar_equipamento(id):
             flash("Nome do equipamento é obrigatório.", "warning")
         else:
             try:
-                cur.execute("SELECT status FROM equipment_items WHERE id=%s", (id,))
+                cur.execute(
+                    "SELECT status FROM equipment_items WHERE id=%s AND company_id=%s",
+                    (id, current_user.company_id),
+                )
                 status_anterior_row = cur.fetchone()
-                status_anterior = status_anterior_row["status"] if status_anterior_row else None
+                if not status_anterior_row:
+                    conn.rollback()
+                    cur.close()
+                    conn.close()
+                    flash("Equipamento não encontrado.", "danger")
+                    return redirect(url_for("equipamentos.listar_equipamentos"))
+                status_anterior = status_anterior_row["status"]
 
+                campos["id"] = id
+                campos["company_id"] = current_user.company_id
                 cur.execute("""
                     UPDATE equipment_items SET
                         categoria_id=%(categoria_id)s, codigo_interno=%(codigo_interno)s, sku=%(sku)s,
@@ -187,10 +199,10 @@ def editar_equipamento(id):
                         valor_semanal=%(valor_semanal)s, valor_quinzenal=%(valor_quinzenal)s,
                         valor_mensal=%(valor_mensal)s, valor_hora=%(valor_hora)s, caucao=%(caucao)s,
                         status=%(status)s, quantidade_disponivel=%(quantidade_disponivel)s
-                    WHERE id=%(id)s
-                """, {**campos, "id": id})
+                    WHERE id=%(id)s AND company_id=%(company_id)s
+                """, campos)
 
-                if status_anterior is not None and status_anterior != campos["status"]:
+                if status_anterior != campos["status"]:
                     registrar_movimentacao(
                         cur, id, "ajuste",
                         f"Status alterado de '{status_anterior}' para '{campos['status']}' via edição",
@@ -203,7 +215,10 @@ def editar_equipamento(id):
                     os.makedirs(pasta, exist_ok=True)
                     filename = _unique_filename(id, secure_filename(foto.filename))
                     foto.save(os.path.join(pasta, filename))
-                    cur.execute("UPDATE equipment_items SET foto=%s WHERE id=%s", (filename, id))
+                    cur.execute(
+                        "UPDATE equipment_items SET foto=%s WHERE id=%s AND company_id=%s",
+                        (filename, id, current_user.company_id),
+                    )
 
                 conn.commit()
                 flash("Equipamento atualizado com sucesso!", "success")
@@ -219,11 +234,17 @@ def editar_equipamento(id):
                ei.caucao, ei.status, ei.branch_id, b.nome AS filial_nome
         FROM equipment_items ei
         LEFT JOIN branches b ON b.id = ei.branch_id
-        WHERE ei.id=%s
-    """, (id,))
+        WHERE ei.id=%s AND ei.company_id=%s
+    """, (id, current_user.company_id))
     equipamento = cur.fetchone()
 
-    cur.execute("SELECT id, nome FROM equipment_categories ORDER BY nome")
+    if not equipamento:
+        cur.close()
+        conn.close()
+        flash("Equipamento não encontrado.", "warning")
+        return redirect(url_for("equipamentos.listar_equipamentos"))
+
+    cur.execute("SELECT id, nome FROM equipment_categories WHERE company_id=%s ORDER BY nome", (current_user.company_id,))
     categorias = cur.fetchall()
 
     cur.close()
@@ -245,9 +266,13 @@ def excluir_equipamento(id):
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        cur.execute("DELETE FROM equipment_items WHERE id=%s", (id,))
-        conn.commit()
-        flash("Equipamento excluído com sucesso!", "info")
+        cur.execute("DELETE FROM equipment_items WHERE id=%s AND company_id=%s", (id, current_user.company_id))
+        if cur.rowcount == 0:
+            conn.rollback()
+            flash("Equipamento não encontrado.", "warning")
+        else:
+            conn.commit()
+            flash("Equipamento excluído com sucesso!", "info")
     except psycopg2.errors.ForeignKeyViolation as e:
         conn.rollback()
         detalhe = getattr(e.diag, "message_detail", "")
@@ -277,17 +302,34 @@ def equipamento_documento(equipamento_id):
     conn = get_db_connection()
     cur = conn.cursor()
 
+    # Valida a posse do equipamento pela empresa ANTES de qualquer leitura ou escrita.
+    cur.execute(
+        "SELECT id FROM equipment_items WHERE id=%s AND company_id=%s",
+        (equipamento_id, current_user.company_id),
+    )
+    if not cur.fetchone():
+        cur.close()
+        conn.close()
+        flash("Equipamento não encontrado.", "warning")
+        return redirect(url_for("equipamentos.listar_equipamentos"))
+
     if request.method == "POST":
         if "documento" not in request.files:
+            cur.close()
+            conn.close()
             flash("Nenhum arquivo enviado.", "danger")
             return redirect(request.url)
 
         file = request.files["documento"]
         if file.filename == "":
+            cur.close()
+            conn.close()
             flash("Nenhum arquivo selecionado.", "danger")
             return redirect(request.url)
 
         if not _allowed(file.filename, ALLOWED_DOC_EXT):
+            cur.close()
+            conn.close()
             flash("Formato inválido. Envie PDF, PNG, JPG ou JPEG.", "warning")
             return redirect(request.url)
 
@@ -298,18 +340,25 @@ def equipamento_documento(equipamento_id):
             os.makedirs(pasta, exist_ok=True)
             file.save(os.path.join(pasta, filename))
 
-            cur.execute("UPDATE equipment_items SET documento_arquivo=%s WHERE id=%s", (filename, equipamento_id))
+            cur.execute(
+                "UPDATE equipment_items SET documento_arquivo=%s WHERE id=%s AND company_id=%s",
+                (filename, equipamento_id, current_user.company_id),
+            )
             conn.commit()
             flash("Documento enviado com sucesso!", "success")
             return redirect(url_for("equipamentos.equipamento_documento", equipamento_id=equipamento_id))
         except Exception as e:
             conn.rollback()
             flash(f"Erro ao enviar documento: {e}", "danger")
+        finally:
+            cur.close()
+            conn.close()
+        return redirect(url_for("equipamentos.equipamento_documento", equipamento_id=equipamento_id))
 
     cur.execute("""
         SELECT id, codigo_interno, nome, modelo, documento_arquivo
-        FROM equipment_items WHERE id=%s
-    """, (equipamento_id,))
+        FROM equipment_items WHERE id=%s AND company_id=%s
+    """, (equipamento_id, current_user.company_id))
     equipamento = cur.fetchone()
     cur.close()
     conn.close()
@@ -322,9 +371,16 @@ def excluir_documento_equipamento(equipamento_id):
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        cur.execute("SELECT documento_arquivo FROM equipment_items WHERE id=%s", (equipamento_id,))
+        cur.execute(
+            "SELECT documento_arquivo FROM equipment_items WHERE id=%s AND company_id=%s",
+            (equipamento_id, current_user.company_id),
+        )
         row = cur.fetchone()
-        if row and row["documento_arquivo"]:
+        if not row:
+            flash("Equipamento não encontrado.", "warning")
+            return redirect(url_for("equipamentos.listar_equipamentos"))
+
+        if row["documento_arquivo"]:
             filename = row["documento_arquivo"]
             pasta = os.path.join(current_app.config["UPLOAD_FOLDER"], "contratos")
             filepath = os.path.join(pasta, filename)
@@ -334,7 +390,10 @@ def excluir_documento_equipamento(equipamento_id):
                 except Exception:
                     pass
 
-        cur.execute("UPDATE equipment_items SET documento_arquivo=NULL WHERE id=%s", (equipamento_id,))
+        cur.execute(
+            "UPDATE equipment_items SET documento_arquivo=NULL WHERE id=%s AND company_id=%s",
+            (equipamento_id, current_user.company_id),
+        )
         conn.commit()
         flash("Documento do equipamento removido com sucesso!", "info")
     except Exception as e:
@@ -345,10 +404,25 @@ def excluir_documento_equipamento(equipamento_id):
         conn.close()
     return redirect(url_for("equipamentos.equipamento_documento", equipamento_id=equipamento_id))
 
-@equipamentos_bp.route("/documentos/<filename>")
+@equipamentos_bp.route("/<int:equipamento_id>/documentos/<filename>")
 @login_required
 @requer_permissao(VER_EQUIPAMENTOS)
-def serve_documento_equipamento(filename):
+def serve_documento_equipamento(equipamento_id, filename):
+    """Exige equipamento_id na URL (não só o filename) para validar a empresa
+    antes de servir qualquer arquivo — mesmo raciocínio e mesma correção já
+    aplicada em clientes.uploaded_documento."""
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "SELECT id FROM equipment_items WHERE id=%s AND company_id=%s",
+            (equipamento_id, current_user.company_id),
+        )
+        if not cur.fetchone():
+            abort(404)
+    finally:
+        cur.close()
+        conn.close()
     pasta = os.path.join(current_app.config["UPLOAD_FOLDER"], "contratos")
     return send_from_directory(pasta, filename)
 
@@ -366,9 +440,19 @@ def equipamento_imagens(equipamento_id):
     conn = get_db_connection()
     cur = conn.cursor()
 
+    cur.execute("SELECT id, codigo_interno, nome, modelo, ano FROM equipment_items WHERE id=%s AND company_id=%s", (equipamento_id, current_user.company_id))
+    equipamento = cur.fetchone()
+    if not equipamento:
+        cur.close()
+        conn.close()
+        flash("Equipamento não encontrado.", "warning")
+        return redirect(url_for("equipamentos.listar_equipamentos"))
+
     if request.method == "POST":
         files = request.files.getlist("imagens")
         if not files or files == [None]:
+            cur.close()
+            conn.close()
             flash("Nenhuma imagem selecionada.", "warning")
             return redirect(request.url)
 
@@ -401,9 +485,10 @@ def equipamento_imagens(equipamento_id):
         except Exception as e:
             conn.rollback()
             flash(f"Erro ao enviar imagens: {e}", "danger")
-
-    cur.execute("SELECT id, codigo_interno, nome, modelo, ano FROM equipment_items WHERE id=%s", (equipamento_id,))
-    equipamento = cur.fetchone()
+        finally:
+            cur.close()
+            conn.close()
+        return redirect(url_for("equipamentos.equipamento_imagens", equipamento_id=equipamento_id))
 
     cur.execute(
         "SELECT id, arquivo, data_upload FROM equipment_item_imagens WHERE equipment_item_id=%s ORDER BY id DESC",
@@ -424,6 +509,14 @@ def excluir_imagem_equipamento(equipamento_id, img_id):
     conn = get_db_connection()
     cur = conn.cursor()
     try:
+        cur.execute(
+            "SELECT id FROM equipment_items WHERE id=%s AND company_id=%s",
+            (equipamento_id, current_user.company_id),
+        )
+        if not cur.fetchone():
+            flash("Equipamento não encontrado.", "warning")
+            return redirect(url_for("equipamentos.listar_equipamentos"))
+
         cur.execute(
             "SELECT arquivo FROM equipment_item_imagens WHERE id=%s AND equipment_item_id=%s",
             (img_id, equipamento_id),
@@ -453,10 +546,24 @@ def excluir_imagem_equipamento(equipamento_id, img_id):
 
     return redirect(url_for("equipamentos.equipamento_imagens", equipamento_id=equipamento_id))
 
-@equipamentos_bp.route("/imagens/<filename>")
+@equipamentos_bp.route("/<int:equipamento_id>/imagens/<filename>")
 @login_required
 @requer_permissao(VER_EQUIPAMENTOS)
-def serve_imagem_equipamento(filename):
+def serve_imagem_equipamento(equipamento_id, filename):
+    """Mesma correção de serve_documento_equipamento: exige equipamento_id na
+    URL pra validar a empresa antes de servir a imagem."""
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "SELECT id FROM equipment_items WHERE id=%s AND company_id=%s",
+            (equipamento_id, current_user.company_id),
+        )
+        if not cur.fetchone():
+            abort(404)
+    finally:
+        cur.close()
+        conn.close()
     pasta = os.path.join(current_app.config["UPLOAD_FOLDER"], "motos")
     return send_from_directory(pasta, filename)
 
@@ -468,6 +575,16 @@ def serve_imagem_equipamento(filename):
 @login_required
 @requer_permissao(VER_EQUIPAMENTOS)
 def qr_png(id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT id FROM equipment_items WHERE id=%s AND company_id=%s", (id, current_user.company_id))
+        if not cur.fetchone():
+            abort(404)
+    finally:
+        cur.close()
+        conn.close()
+
     url_destino = url_for("equipamentos.qr_page", id=id, _external=True)
     img = qrcode.make(url_destino)
     buffer = io.BytesIO()
@@ -495,7 +612,7 @@ def qr_page(id):
             FROM equipment_items WHERE id=%s
         """, (id,))
         equipamento = cur.fetchone()
-        if not equipamento:
+        if not equipamento or equipamento["company_id"] != current_user.company_id:
             flash("Equipamento não encontrado.", "warning")
             return redirect(url_for("equipamentos.listar_equipamentos"))
 
@@ -511,7 +628,10 @@ def qr_page(id):
 
             status_anterior = equipamento["status"]
             if novo_status != status_anterior:
-                cur.execute("UPDATE equipment_items SET status=%s WHERE id=%s", (novo_status, id))
+                cur.execute(
+                    "UPDATE equipment_items SET status=%s WHERE id=%s AND company_id=%s",
+                    (novo_status, id, current_user.company_id),
+                )
                 registrar_movimentacao(
                     cur, id, "ajuste",
                     f"Status alterado de '{status_anterior}' para '{novo_status}' via QR Code",

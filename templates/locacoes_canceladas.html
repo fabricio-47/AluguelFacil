@@ -1,152 +1,143 @@
-{% extends "base.html" %}
-
-{% block title %}Locações Canceladas{% endblock %}
-
-{% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h3 class="card-title mb-0">
-                        <i class="fas fa-ban text-danger me-2"></i>
-                        Locações Canceladas
-                    </h3>
-                    <a href="{{ url_for('locacoes.listar_locacoes') }}" class="btn btn-primary">
-                        <i class="fas fa-arrow-left me-1"></i>
-                        Voltar para Locações Ativas
-                    </a>
-                </div>
-                <div class="card-body">
-                    {% if canceladas %}
-                        <div class="table-responsive">
-                            <table class="table table-striped table-hover">
-                                <thead class="table-dark">
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Cliente</th>
-                                        <th>Moto</th>
-                                        <th>Período</th>
-                                        <th>Valor</th>
-                                        <th>Frequência</th>
-                                        <th>Tipo</th>
-                                        <th>Status Pagamento</th>
-                                        <th>Total Recebido</th>
-                                        <th>Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for loc in canceladas %}
-                                    <tr>
-                                        <td>
-                                            <strong>#{{ loc.id }}</strong>
-                                        </td>
-                                        <td>{{ loc.cliente_nome }}</td>
-                                        <td>
-                                            <strong>{{ loc.moto_modelo }}</strong><br>
-                                            <small class="text-muted">{{ loc.moto_placa }}</small>
-                                        </td>
-                                        <td>
-                                            <strong>Início:</strong> {{ loc.data_inicio.strftime('%d/%m/%Y') if loc.data_inicio else 'N/A' }}<br>
-                                            <strong>Fim:</strong> 
-                                            {% if loc.data_fim %}
-                                                <span class="text-danger">{{ loc.data_fim.strftime('%d/%m/%Y') }}</span>
-                                            {% else %}
-                                                <span class="text-muted">N/A</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            <strong>R$ {{ "%.2f"|format(loc.valor) }}</strong>
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-secondary">{{ loc.frequencia_pagamento|title }}</span>
-                                        </td>
-                                        <td>
-                                            {% if loc.asaas_subscription_id %}
-                                                <span class="badge bg-info">
-                                                    <i class="fas fa-sync-alt me-1"></i>
-                                                    Assinatura
-                                                </span>
-                                                <br><small class="text-muted">ID: {{ loc.asaas_subscription_id[:8] }}...</small>
-                                            {% elif loc.asaas_payment_id %}
-                                                <span class="badge bg-warning">
-                                                    <i class="fas fa-file-invoice me-1"></i>
-                                                    Pagamento Único
-                                                </span>
-                                                <br><small class="text-muted">ID: {{ loc.asaas_payment_id[:8] }}...</small>
-                                            {% else %}
-                                                <span class="badge bg-secondary">
-                                                    <i class="fas fa-question me-1"></i>
-                                                    Manual
-                                                </span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            {% if loc.pagamento_status %}
-                                                {% if loc.pagamento_status == 'RECEIVED' %}
-                                                    <span class="badge bg-success">
-                                                        <i class="fas fa-check me-1"></i>
-                                                        Pago
-                                                    </span>
-                                                {% elif loc.pagamento_status == 'CANCELLED' %}
-                                                    <span class="badge bg-secondary">
-                                                        <i class="fas fa-ban me-1"></i>
-                                                        Cancelado
-                                                    </span>
-                                                {% else %}
-                                                    <span class="badge bg-warning">{{ loc.pagamento_status }}</span>
-                                                {% endif %}
-                                            {% else %}
-                                                <span class="text-muted">N/A</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            {% if loc.valor_pago %}
-                                                <strong class="text-success">R$ {{ "%.2f"|format(loc.valor_pago) }}</strong>
-                                            {% else %}
-                                                <span class="text-muted">R$ 0,00</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            <div class="btn-group-vertical btn-group-sm" role="group">
-                                                {% if loc.contrato_arquivo %}
-                                                    <a href="{{ url_for('locacoes.contrato_pdf', locacao_id=loc.id) }}"
-                                                       class="btn btn-outline-primary btn-sm" target="_blank">
-                                                        <i class="fas fa-file-pdf me-1"></i>
-                                                        Contrato
-                                                    </a>
-                                                {% endif %}
-
-                                                {% if loc.boleto_url %}
-                                                    <a href="{{ loc.boleto_url }}"
-                                                       class="btn btn-outline-info btn-sm" target="_blank">
-                                                        <i class="fas fa-barcode me-1"></i>
-                                                        Boleto
-                                                    </a>
-                                                {% endif %}
-
-                                                <a href="{{ url_for('servicos.listar_servicos', locacao_id=loc.id) }}"
-                                                   class="btn btn-outline-warning btn-sm">
-                                                    <i class="fas fa-tools me-1"></i>
-                                                    Serviços
-                                                </a>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    {% else %}
-                        <div class="text-center py-5">
-                            <i class="fas fa-smile fa-3x text-success mb-3"></i>
-                            <h4>Nenhuma locação cancelada!</h4>
-                            <p class="text-muted">Todas as locações estão ativas ou não há registros de cancelamento.</p>
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3><i class="fa-solid fa-file-circle-xmark"></i> Locações Canceladas</h3>
+        <a href="{{ url_for('locacoes.listar_locacoes') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="fa-solid fa-arrow-left"></i> Voltar para Locações Ativas
+        </a>
     </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if locacoes %}
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>#</th>
+                    <th>Cliente</th>
+                    <th>Equipamento</th>
+                    <th>Período</th>
+                    <th>Valor</th>
+                    <th>Frequência</th>
+                    <th>Tipo</th>
+                    <th>Status Pagamento</th>
+                    <th>Valor Pago</th>
+                    <th>Boletos</th>
+                    <th>Último Boleto</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for loc in locacoes %}
+                <tr>
+                    <td>{{ loc.id }}</td>
+                    <td>{{ loc.cliente_nome }}</td>
+                    <td>
+                        {{ loc.equipamento_modelo }}
+                        {% if loc.equipamento_codigo %}<br><small class="text-muted">{{ loc.equipamento_codigo }}</small>{% endif %}
+                    </td>
+                    <td>
+                        {{ loc.data_inicio.strftime('%d/%m/%Y') if loc.data_inicio else '-' }}
+                        até
+                        {{ loc.data_fim.strftime('%d/%m/%Y') if loc.data_fim else '-' }}
+                    </td>
+                    <td>R$ {{ "%.2f"|format(loc.valor or 0)|replace('.', ',') }}</td>
+                    <td>
+                        {% if loc.frequencia_pagamento == 'WEEKLY' %}Semanal
+                        {% elif loc.frequencia_pagamento == 'MONTHLY' %}Mensal
+                        {% else %}{{ loc.frequencia_pagamento }}{% endif %}
+                    </td>
+                    <td>
+                        {% if loc.asaas_subscription_id %}
+                            <span class="badge bg-info"><i class="fas fa-sync-alt me-1"></i>Assinatura</span>
+                        {% elif loc.asaas_payment_id %}
+                            <span class="badge bg-warning"><i class="fas fa-file-invoice me-1"></i>Pagamento Único</span>
+                        {% else %}
+                            <span class="badge bg-secondary"><i class="fas fa-question me-1"></i>Manual</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if loc.pagamento_status in ('RECEIVED', 'CONFIRMED') %}
+                            <span class="badge bg-success">{{ loc.pagamento_status }}</span>
+                        {% elif loc.pagamento_status == 'OVERDUE' %}
+                            <span class="badge bg-danger">{{ loc.pagamento_status }}</span>
+                        {% elif loc.pagamento_status == 'PENDING' %}
+                            <span class="badge bg-warning text-dark">{{ loc.pagamento_status }}</span>
+                        {% elif loc.pagamento_status == 'CANCELED' %}
+                            <span class="badge bg-secondary">{{ loc.pagamento_status }}</span>
+                        {% else %}
+                            <span class="badge bg-light text-dark">{{ loc.pagamento_status }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if loc.valor_pago %}
+                            <strong class="text-success">R$ {{ "%.2f"|format(loc.valor_pago) }}</strong>
+                        {% else %}
+                            <span class="text-muted">R$ 0,00</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <small>
+                            Total: {{ loc.total_boletos }}<br>
+                            Pagos: {{ loc.boletos_pagos }} ·
+                            Pendentes: {{ loc.boletos_pendentes }}<br>
+                            Vencidos: {{ loc.boletos_vencidos }} ·
+                            Cancelados: {{ loc.boletos_cancelados }}
+                        </small>
+                    </td>
+                    <td>
+                        {% if loc.status_ultimo_boleto %}
+                            {% if loc.status_ultimo_boleto in ('RECEIVED', 'CONFIRMED') %}
+                                <span class="badge bg-success">{{ loc.status_ultimo_boleto }}</span>
+                            {% elif loc.status_ultimo_boleto == 'OVERDUE' %}
+                                <span class="badge bg-danger">{{ loc.status_ultimo_boleto }}</span>
+                            {% elif loc.status_ultimo_boleto == 'PENDING' %}
+                                <span class="badge bg-warning text-dark">{{ loc.status_ultimo_boleto }}</span>
+                            {% elif loc.status_ultimo_boleto == 'CANCELED' %}
+                                <span class="badge bg-secondary">{{ loc.status_ultimo_boleto }}</span>
+                            {% else %}
+                                <span class="badge bg-light text-dark">{{ loc.status_ultimo_boleto }}</span>
+                            {% endif %}
+                            <br>
+                            <small class="text-muted">Venc.: {{ loc.ultimo_vencimento.strftime('%d/%m/%Y') if loc.ultimo_vencimento else '-' }}</small>
+                            {% if loc.url_ultimo_boleto %}<br><a href="{{ loc.url_ultimo_boleto }}" target="_blank" class="small">Ver boleto</a>{% endif %}
+                        {% else %}
+                            <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="btn-group-vertical btn-group-sm" role="group">
+                            {% if loc.contrato_arquivo %}
+                                <a href="{{ url_for('locacoes.contrato_pdf', locacao_id=loc.id) }}" target="_blank" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-file-pdf me-1"></i>Contrato
+                                </a>
+                            {% else %}
+                                <span class="text-muted small">Sem contrato</span>
+                            {% endif %}
+                            <a href="{{ url_for('servicos.listar_servicos', locacao_id=loc.id) }}" class="btn btn-outline-warning btn-sm">
+                                <i class="fas fa-tools me-1"></i>Serviços
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="fas fa-smile fa-3x text-success mb-3"></i>
+        <h4>Nenhuma locação cancelada!</h4>
+        <p class="text-muted">Todas as locações estão ativas ou não há registros de cancelamento.</p>
+    </div>
+    {% endif %}
 </div>
-{% endblock %}

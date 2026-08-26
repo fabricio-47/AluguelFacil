@@ -100,7 +100,7 @@
           <label class="form-label">Foto</label>
           {% if equipamento.foto %}
             <div class="mb-1">
-              <img src="{{ url_for('equipamentos.serve_imagem_equipamento', filename=equipamento.foto) }}"
+              <img src="{{ url_for('equipamentos.serve_imagem_equipamento', equipamento_id=equipamento.id, filename=equipamento.foto) }}"
                    alt="Foto do equipamento" class="img-thumbnail" style="max-height:80px;">
             </div>
           {% endif %}
@@ -157,7 +157,7 @@
           <i class="fa-solid fa-file-arrow-up me-1"></i> Documento do Equipamento
         </a>
         {% if equipamento.documento_arquivo %}
-          <a href="{{ url_for('equipamentos.serve_documento_equipamento', filename=equipamento.documento_arquivo) }}"
+          <a href="{{ url_for('equipamentos.serve_documento_equipamento', equipamento_id=equipamento.id, filename=equipamento.documento_arquivo) }}"
              target="_blank" class="btn btn-outline-dark">
             <i class="fa-solid fa-file-lines me-1"></i> Ver Documento
           </a>

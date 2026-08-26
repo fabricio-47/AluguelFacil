@@ -58,7 +58,7 @@
             <label for="{{ campo }}" class="form-label">{{ rotulo }}</label>
             {% if cliente[coluna] %}
               <div class="mb-2">
-                <img src="{{ url_for('clientes.uploaded_documento', filename=cliente[coluna]) }}"
+                <img src="{{ url_for('clientes.uploaded_documento', cliente_id=cliente.id, filename=cliente[coluna]) }}"
                      class="img-fluid rounded border" style="max-height: 120px;" alt="{{ rotulo }}">
               </div>
             {% endif %}
@@ -76,9 +76,9 @@
         <div id="foto_cliente_preview_box" class="border rounded d-flex align-items-center justify-content-center mb-2 text-muted" style="height: 160px;">
           {% if cliente.foto_cliente_arquivo %}
             {% if cliente.foto_cliente_arquivo.lower().endswith('.pdf') %}
-              <a href="{{ url_for('clientes.uploaded_documento', filename=cliente.foto_cliente_arquivo) }}" target="_blank">Ver PDF</a>
+              <a href="{{ url_for('clientes.uploaded_documento', cliente_id=cliente.id, filename=cliente.foto_cliente_arquivo) }}" target="_blank">Ver PDF</a>
             {% else %}
-              <img src="{{ url_for('clientes.uploaded_documento', filename=cliente.foto_cliente_arquivo) }}"
+              <img src="{{ url_for('clientes.uploaded_documento', cliente_id=cliente.id, filename=cliente.foto_cliente_arquivo) }}"
                    class="img-fluid rounded" style="max-height: 160px;" alt="Foto do cliente">
             {% endif %}
           {% else %}

@@ -6,7 +6,7 @@ from psycopg2.extras import RealDictCursor
 
 from database import get_db_connection
 from permissions import requer_permissao, tem_permissao, tem_role, VER_ORCAMENTOS, GERENCIAR_ORCAMENTOS
-from routes.locacoes_routes import criar_locacao_interna, AsaasError, ComprovanteDesatualizadoError
+from routes.locacoes_routes import criar_locacao_interna, AsaasError, ComprovanteDesatualizadoError, AcessoNegadoError
 
 orcamentos_bp = Blueprint("orcamentos", __name__, url_prefix="/orcamentos")
 
@@ -16,7 +16,13 @@ def _pode_ver_todos():
 
 
 def _acessa_orcamento(orcamento):
-    """Atendente/vendedor só acessam orçamentos que eles mesmos criaram."""
+    """Só acessa orçamentos da própria empresa (checagem estrita, primeiro que
+    tudo — defesa extra mesmo que a query que buscou o orçamento já filtre
+    por company_id, para proteger a função mesmo que um chamador futuro
+    esqueça de filtrar); dentro da empresa, atendente/vendedor só acessam os
+    que eles mesmos criaram."""
+    if orcamento["company_id"] != current_user.company_id:
+        return False
     if _pode_ver_todos():
         return True
     return orcamento["criado_por"] == int(current_user.id)
@@ -77,10 +83,10 @@ def listar_orcamentos():
                 return redirect(url_for("orcamentos.listar_orcamentos"))
 
             cur.execute("""
-                INSERT INTO orcamentos (cliente_id, criado_por, frete, valor_total, validade, observacoes)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                INSERT INTO orcamentos (company_id, cliente_id, criado_por, frete, valor_total, validade, observacoes)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
-            """, (cliente_id, int(current_user.id), frete, valor_total, validade, observacoes))
+            """, (current_user.company_id, cliente_id, int(current_user.id), frete, valor_total, validade, observacoes))
             orcamento_id = cur.fetchone()["id"]
 
             for equip_id, quantidade, periodo_dias, frequencia, valor_unitario, desconto in itens:
@@ -115,8 +121,9 @@ def listar_orcamentos():
                 FROM orcamentos o
                 JOIN clientes c ON c.id = o.cliente_id
                 LEFT JOIN usuarios u ON u.id = o.criado_por
+                WHERE o.company_id = %s
                 ORDER BY o.id DESC
-            """)
+            """, (current_user.company_id,))
         else:
             cur.execute("""
                 SELECT o.id, o.status, o.valor_total, o.validade, o.created_at,
@@ -124,18 +131,18 @@ def listar_orcamentos():
                 FROM orcamentos o
                 JOIN clientes c ON c.id = o.cliente_id
                 LEFT JOIN usuarios u ON u.id = o.criado_por
-                WHERE o.criado_por = %s
+                WHERE o.company_id = %s AND o.criado_por = %s
                 ORDER BY o.id DESC
-            """, (int(current_user.id),))
+            """, (current_user.company_id, int(current_user.id)))
         orcamentos = cur.fetchall()
 
-        cur.execute("SELECT id, nome FROM clientes ORDER BY nome ASC")
+        cur.execute("SELECT id, nome FROM clientes WHERE company_id = %s ORDER BY nome ASC", (current_user.company_id,))
         clientes = cur.fetchall()
 
         cur.execute("""
             SELECT id, nome, modelo, codigo_interno, valor_diaria, valor_semanal, valor_mensal
-            FROM equipment_items WHERE status != 'inativo' ORDER BY nome ASC
-        """)
+            FROM equipment_items WHERE status != 'inativo' AND company_id = %s ORDER BY nome ASC
+        """, (current_user.company_id,))
         equipamentos = [{
             "id": r["id"], "nome": r["nome"], "modelo": r["modelo"], "codigo_interno": r["codigo_interno"],
             "valor_diaria": float(r["valor_diaria"]) if r["valor_diaria"] is not None else None,
@@ -164,8 +171,8 @@ def detalhe_orcamento(id):
             FROM orcamentos o
             JOIN clientes c ON c.id = o.cliente_id
             LEFT JOIN usuarios u ON u.id = o.criado_por
-            WHERE o.id = %s
-        """, (id,))
+            WHERE o.id = %s AND o.company_id = %s
+        """, (id, current_user.company_id))
         orcamento = cur.fetchone()
         if not orcamento:
             flash("Orçamento não encontrado.", "warning")
@@ -207,7 +214,10 @@ def mudar_status_orcamento(id):
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     try:
-        cur.execute("SELECT criado_por FROM orcamentos WHERE id=%s", (id,))
+        cur.execute(
+            "SELECT criado_por, company_id FROM orcamentos WHERE id=%s AND company_id=%s",
+            (id, current_user.company_id),
+        )
         orcamento = cur.fetchone()
         if not orcamento:
             flash("Orçamento não encontrado.", "warning")
@@ -216,7 +226,7 @@ def mudar_status_orcamento(id):
             flash("Você não tem acesso a este orçamento.", "danger")
             return redirect(url_for("orcamentos.listar_orcamentos"))
 
-        cur.execute("UPDATE orcamentos SET status=%s WHERE id=%s", (novo_status, id))
+        cur.execute("UPDATE orcamentos SET status=%s WHERE id=%s AND company_id=%s", (novo_status, id, current_user.company_id))
         conn.commit()
         flash("Status do orçamento atualizado.", "success")
     except Exception as e:
@@ -236,7 +246,7 @@ def converter_orcamento(id):
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     try:
-        cur.execute("SELECT * FROM orcamentos WHERE id=%s", (id,))
+        cur.execute("SELECT * FROM orcamentos WHERE id=%s AND company_id=%s", (id, current_user.company_id))
         orcamento = cur.fetchone()
         if not orcamento:
             flash("Orçamento não encontrado.", "warning")
@@ -246,7 +256,7 @@ def converter_orcamento(id):
             return redirect(url_for("orcamentos.listar_orcamentos"))
 
         if orcamento["status"] != "aprovado":
-            cur.execute("UPDATE orcamentos SET status='aprovado' WHERE id=%s", (id,))
+            cur.execute("UPDATE orcamentos SET status='aprovado' WHERE id=%s AND company_id=%s", (id, current_user.company_id))
             conn.commit()
 
         cur.execute("SELECT asaas_id, nome, cpf, endereco FROM clientes WHERE id=%s", (orcamento["cliente_id"],))
@@ -294,7 +304,7 @@ def converter_orcamento(id):
                 conn.commit()
                 convertidos += 1
 
-            except (ValueError, AsaasError, ComprovanteDesatualizadoError) as e:
+            except (ValueError, AsaasError, ComprovanteDesatualizadoError, AcessoNegadoError) as e:
                 conn.rollback()
                 falhas.append(f"item #{item['id']} ({item['equipment_item_id']}): {e}")
             except Exception as e:

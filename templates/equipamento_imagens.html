@@ -50,7 +50,7 @@
     {% for img in imagens %}
       <div class="col-md-3 mb-4">
         <div class="card shadow-sm h-100">
-          <img src="{{ url_for('equipamentos.serve_imagem_equipamento', filename=img.arquivo if img.arquivo is defined else img['arquivo']) }}"
+          <img src="{{ url_for('equipamentos.serve_imagem_equipamento', equipamento_id=equipamento.id, filename=img.arquivo if img.arquivo is defined else img['arquivo']) }}"
                class="card-img-top" alt="Imagem do equipamento" style="height: 200px; object-fit: cover;">
           <div class="card-body text-center">
             {% set dt = (img.data_upload if img.data_upload is defined else img['data_upload']) %}

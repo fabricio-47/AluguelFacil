@@ -48,9 +48,9 @@ def listar_locacoes():
                 FROM locacoes l
                 JOIN clientes c ON c.id = l.cliente_id
                 JOIN equipment_items ei ON ei.id = l.equipment_item_id
-                WHERE l.cancelado = FALSE
+                WHERE l.cancelado = FALSE AND l.company_id = %s
                 ORDER BY l.id DESC
-            """)
+            """, (current_user.company_id,))
             locacoes_rows = cur.fetchall()
             locacoes = [{
                 "id": r["id"],
@@ -67,15 +67,15 @@ def listar_locacoes():
             } for r in locacoes_rows]
 
             # Clientes para o select
-            cur.execute("SELECT id, nome FROM clientes ORDER BY nome ASC")
+            cur.execute("SELECT id, nome FROM clientes WHERE company_id = %s ORDER BY nome ASC", (current_user.company_id,))
             clientes = [{"id": r["id"], "nome": r["nome"]} for r in cur.fetchall()]
 
             # Equipamentos disponíveis, com os preços por frequência pro cálculo automático no front-end
             cur.execute("""
                 SELECT id, modelo, codigo_interno AS codigo, valor_semanal, valor_mensal
                 FROM equipment_items
-                WHERE status = 'disponivel' ORDER BY modelo ASC
-            """)
+                WHERE status = 'disponivel' AND company_id = %s ORDER BY modelo ASC
+            """, (current_user.company_id,))
             equipamentos = [{
                 "id": r["id"], "modelo": r["modelo"], "codigo": r["codigo"],
                 "valor_semanal": float(r["valor_semanal"]) if r["valor_semanal"] is not None else None,
@@ -190,6 +190,9 @@ def listar_locacoes():
         except ComprovanteDesatualizadoError as e:
             flash(str(e), "warning")
             return redirect(url_for("locacoes.listar_locacoes"))
+        except AcessoNegadoError as e:
+            flash(str(e), "danger")
+            return redirect(url_for("locacoes.listar_locacoes"))
 
         conn.commit()
         flash("Locação criada, contrato gerado em PDF e assinatura recorrente configurada no Asaas! "
@@ -230,6 +233,11 @@ class ComprovanteDesatualizadoError(Exception):
     pass
 
 
+class AcessoNegadoError(Exception):
+    """Cliente ou equipamento pertence a outra empresa (violação de isolamento multi-tenant)."""
+    pass
+
+
 # ==== Criação de locação (reaproveitada pelo formulário manual acima e pela conversão de orçamento) ====
 def criar_locacao_interna(cur, cliente, equipamento, cliente_id, equipamento_id,
                            data_inicio, data_fim, frequencia, valor, observacoes,
@@ -246,8 +254,29 @@ def criar_locacao_interna(cur, cliente, equipamento, cliente_id, equipamento_id,
     conversão de orçamento (bloco 6) não passa isso, e o contrato sai sem
     assinatura embutida nesse caso, como já era antes deste bloco.
 
+    Antes de qualquer outra coisa, valida que cliente_id e equipamento_id pertencem
+    à empresa do usuário logado — busca o company_id direto do banco (não confia no
+    dict já buscado pelo chamador), pra proteger a função mesmo que um chamador
+    futuro esqueça de filtrar por empresa. Levanta AcessoNegadoError caso não bata.
+
     Retorna o id da locação criada.
     """
+    company_id = current_user.company_id
+
+    cur.execute("SELECT company_id FROM clientes WHERE id=%s", (cliente_id,))
+    cliente_company = cur.fetchone()
+    if not cliente_company or cliente_company["company_id"] != company_id:
+        raise AcessoNegadoError(
+            "Cliente não encontrado ou não pertence à sua empresa. Requisição recusada."
+        )
+
+    cur.execute("SELECT company_id FROM equipment_items WHERE id=%s", (equipamento_id,))
+    equipamento_company = cur.fetchone()
+    if not equipamento_company or equipamento_company["company_id"] != company_id:
+        raise AcessoNegadoError(
+            "Equipamento não encontrado ou não pertence à sua empresa. Requisição recusada."
+        )
+
     if cliente_precisa_atualizar_comprovante(cur, cliente_id):
         raise ComprovanteDesatualizadoError(
             f"{cliente['nome']} está sem alugar há mais de 90 dias e precisa reenviar o "
@@ -266,7 +295,7 @@ def criar_locacao_interna(cur, cliente, equipamento, cliente_id, equipamento_id,
         "billingType": "BOLETO",
         "value": valor,
         "cycle": frequencia,  # 'WEEKLY' ou 'MONTHLY'
-        "description": f"Locação moto {modelo} - {placa} ({cliente['nome']})",
+        "description": f"Locação {equipamento.get('nome') or modelo} - {placa} ({cliente['nome']})",
         "nextDueDate": data_inicio.strftime("%Y-%m-%d"),
     }
     if data_fim:
@@ -479,16 +508,51 @@ def canceladas():
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("""
+<<<<<<< HEAD
         SELECT l.id, l.data_inicio, l.data_fim, l.valor, l.frequencia_pagamento,
         l.pagamento_status, l.valor_pago, l.asaas_subscription_id, l.asaas_payment_id,
         l.boleto_url, l.contrato_arquivo,
         c.nome AS cliente_nome, ei.modelo AS moto_modelo, ei.codigo_interno AS moto_placa
+=======
+        SELECT
+            l.id, l.data_inicio, l.data_fim, l.valor, l.frequencia_pagamento,
+            l.pagamento_status, l.valor_pago, l.asaas_subscription_id, l.asaas_payment_id, l.boleto_url,
+            c.nome AS cliente_nome, ei.modelo AS equipamento_modelo, ei.codigo_interno AS equipamento_codigo,
+            COALESCE(bcount.total_boletos, 0) AS total_boletos,
+            COALESCE(bcount.boletos_pagos, 0) AS boletos_pagos,
+            COALESCE(bcount.boletos_pendentes, 0) AS boletos_pendentes,
+            COALESCE(bcount.boletos_vencidos, 0) AS boletos_vencidos,
+            COALESCE(bcount.boletos_cancelados, 0) AS boletos_cancelados,
+            COALESCE(bcount.total_recebido_boletos, 0) AS total_recebido_boletos,
+            ultimo.status AS status_ultimo_boleto,
+            ultimo.data_vencimento AS ultimo_vencimento,
+            ultimo.boleto_url AS url_ultimo_boleto
+>>>>>>> main
         FROM locacoes l
         JOIN clientes c ON l.cliente_id = c.id
         JOIN equipment_items ei ON l.equipment_item_id = ei.id
-        WHERE l.cancelado = TRUE
+        LEFT JOIN (
+            SELECT
+                locacao_id,
+                COUNT(*) AS total_boletos,
+                COUNT(*) FILTER (WHERE status IN %s) AS boletos_pagos,
+                COUNT(*) FILTER (WHERE status = 'PENDING') AS boletos_pendentes,
+                COUNT(*) FILTER (WHERE status = 'OVERDUE') AS boletos_vencidos,
+                COUNT(*) FILTER (WHERE status IN ('CANCELED', 'REFUNDED', 'CHARGEBACK')) AS boletos_cancelados,
+                COALESCE(SUM(valor_pago), 0) AS total_recebido_boletos
+            FROM boletos
+            GROUP BY locacao_id
+        ) bcount ON bcount.locacao_id = l.id
+        LEFT JOIN LATERAL (
+            SELECT status, data_vencimento, boleto_url
+            FROM boletos b
+            WHERE b.locacao_id = l.id
+            ORDER BY data_vencimento DESC NULLS LAST, id DESC
+            LIMIT 1
+        ) ultimo ON TRUE
+        WHERE l.cancelado = TRUE AND l.company_id = %s
         ORDER BY l.data_inicio DESC
-    """)
+    """, (STATUS_RECEBIDO, current_user.company_id))
     locacoes = cur.fetchall()
     cur.close()
     conn.close()
