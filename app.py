@@ -1,180 +1,106 @@
-Para integrar o SDK atualizado da Google (`google-genai`) no seu aplicativo Flask e remover o uso do modelo legado, você precisa fazer as seguintes atualizações no `app.py`:
-
-1. Instalar a nova biblioteca no seu ambiente terminal:
-```bash
-pip install google-genai
-
-```
-
-
-2. Atualizar o arquivo **`app.py`** com a nova inicialização e o modelo `gemini-2.5-flash` ou `gemini-2.5-pro` (o modelo `gemini-3.6-flash` ainda não existe oficialmente no SDK; o padrão recomendado da família 2.5 é o `gemini-2.5-flash`).
-
-Código atualizado com a integração da IA:
-
-```python
+from flask import Flask
+from flask_login import LoginManager
 import os
-import psycopg2
-from flask import Flask, flash, redirect, render_template, request, url_for
-from google import genai  # Novo SDK oficial do Gemini
 
+from config import Config
+from routes.auth_routes import auth_bp
+from routes.clientes_routes import clientes_bp
+from routes.equipamentos_routes import equipamentos_bp
+from routes.locacoes_routes import locacoes_bp
+from routes.financeiro_routes import financeiro_bp
+from routes.checklists_routes import checklists_bp
+from routes.manutencoes_routes import manutencoes_bp
+from routes.filiais_routes import filiais_bp
+from routes.entregas_routes import entregas_bp
+from routes.operacional_routes import operacional_bp
+from routes.relatorios_routes import relatorios_bp
+from routes.servicos_routes import servicos_bp
+from routes.webhook_routes import webhook_bp
+from routes.dashboard_routes import dashboard_bp
+from routes.orcamentos_routes import orcamentos_bp
+from routes.crm_routes import crm_bp
+from routes.catalogo_routes import catalogo_bp
+from routes.portal_routes import portal_bp
+from routes.usuarios_routes import usuarios_bp
+from routes.admin_plataforma_routes import admin_plataforma_bp
+from routes.assinaturas_routes import assinaturas_bp
+from routes.assistente_routes import assistente_bp
+from routes.configuracoes_routes import configuracoes_bp
+
+# Inicialização
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'chave-secreta-provisoria-aluguelfacil')
+app.config.from_object(Config)
 
-# Configuração do Cliente Gemini com o novo SDK
-# Certifique-se de ter a variável GEMINI_API_KEY no seu ambiente (.env ou SO)
-ai_client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
-AI_MODEL_NAME = "gemini-2.5-flash"
+# Flask-Login
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = "auth.login"
+login_manager.login_message = "Faça login para acessar esta página."
+login_manager.login_message_category = "info"
 
+@login_manager.user_loader
+def load_user(user_id):
+    # Importa aqui para evitar import circular
+    from models.user import User
 
-def get_db_connection():
-    """Estabelece a conexão com o banco de dados local ou produção."""
-    database_url = os.environ.get('DATABASE_URL')
-    if database_url:
-        return psycopg2.connect(database_url)
-    
-    return psycopg2.connect(
-        host="localhost",
-        database="postgres",
-        user="postgres",
-        password="password"
-    )
+    return User.get_by_id(user_id)
 
-@app.route('/')
-def index():
-    """Página inicial do sistema."""
-    return "<h1>SaaS AluguelFácil Rodando com Sucesso!</h1><p>Acesse o painel geral em: <a href='/inventario'>/inventario</a></p>"
+# Registro dos blueprints
+app.register_blueprint(dashboard_bp)  # Dashboard na raiz "/"
+app.register_blueprint(auth_bp)
+app.register_blueprint(clientes_bp)
+app.register_blueprint(equipamentos_bp)
+app.register_blueprint(locacoes_bp)
+app.register_blueprint(financeiro_bp)
+app.register_blueprint(checklists_bp)
+app.register_blueprint(manutencoes_bp)
+app.register_blueprint(filiais_bp)
+app.register_blueprint(entregas_bp)
+app.register_blueprint(operacional_bp)
+app.register_blueprint(relatorios_bp)
+app.register_blueprint(servicos_bp)
+app.register_blueprint(webhook_bp)
+app.register_blueprint(orcamentos_bp)
+app.register_blueprint(crm_bp)
+app.register_blueprint(catalogo_bp)
+app.register_blueprint(portal_bp)
+app.register_blueprint(usuarios_bp)
+app.register_blueprint(admin_plataforma_bp)
+app.register_blueprint(assinaturas_bp)
+app.register_blueprint(assistente_bp)
+app.register_blueprint(configuracoes_bp)
 
+# Criar pastas de upload logo na inicialização do app (Flask 3.x removeu before_first_request)
+upload_folder = app.config.get("UPLOAD_FOLDER", "uploads")
+for folder in ["contratos", "habilitacoes", "motos", "checklists", "assinaturas"]:
+    path = os.path.join(upload_folder, folder)
+    os.makedirs(path, exist_ok=True)
 
-# ==========================================
-# 🏢 MÓDULO DE IMÓVEIS (ROTAS)
-# ==========================================
-
-@app.route('/imoveis/cadastrar', methods=['GET'])
-def tela_cadastro_imovel():
-    """Exibe o formulário HTML de cadastro de imóvel."""
-    return render_template('imoveis/cadastrar.html')
-
-@app.route('/imoveis/salvar', methods=['POST'])
-def salvar_imovel():
-    """Recebe os dados do formulário e grava nas tabelas unificadas."""
-    endereco = request.form.get('endereco_completo')
-    m2 = request.form.get('metro_quadrado')
-    quartos = request.form.get('quartos', 0)
-    banheiros = request.form.get('banheiros', 0)
-    tipo = request.form.get('tipo_imovel')
-    iptu = request.form.get('iptu', 0.0)
-    condominio = request.form.get('condominio', 0.0)
-    
-    tenant_id = 1 
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    try:
-        cursor.execute(
-            "INSERT INTO rentable_items (tenant_id, item_type, status) VALUES (%s, %s, %s) RETURNING id;",
-            (tenant_id, 'imovel', 'disponivel')
-        )
-        rentable_item_id = cursor.fetchone()[0]
-
-        cursor.execute(
-            """INSERT INTO imoveis (rentable_item_id, endereco_completo, metro_quadrado, quartos, banheiros, tipo_imovel, iptu, condominio)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s);""",
-            (rentable_item_id, endereco, m2, quartos, banheiros, tipo, iptu, condominio)
-        )
-        conn.commit()
-        flash("Imóvel cadastrado com sucesso!", "success")
-    except Exception as e:
-        conn.rollback()
-        flash(f"Erro ao salvar imóvel: {str(e)}", "danger")
-    finally:
-        cursor.close()
-        conn.close()
-
-    return redirect(url_for('tela_cadastro_imovel'))
-
-
-# ==========================================
-# 🚗 MÓDULO DE VEÍCULOS (ROTAS)
-# ==========================================
-
-@app.route('/veiculos/cadastrar', methods=['GET'])
-def tela_cadastro_veiculo():
-    """Exibe o formulário HTML de cadastro de veículo."""
-    return render_template('veiculos/cadastrar.html')
-
-@app.route('/veiculos/salvar', methods=['POST'])
-def salvar_veiculo():
-    """Recebe os dados do formulário e grava nas tabelas unificadas."""
-    placa = request.form.get('placa')
-    chassi = request.form.get('chassi')
-    renavam = request.form.get('renavam')
-    km = request.form.get('quilometragem', 0)
-    combustivel = request.form.get('combustivel')
-    cambio = request.form.get('cambio')
-    
-    tenant_id = 1
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    try:
-        cursor.execute(
-            "INSERT INTO rentable_items (tenant_id, item_type, status) VALUES (%s, %s, %s) RETURNING id;",
-            (tenant_id, 'veiculo', 'disponivel')
-        )
-        rentable_item_id = cursor.fetchone()[0]
-
-        cursor.execute(
-            """INSERT INTO veiculos (rentable_item_id, placa, chassi, renavam, quilometragem, combustivel, cambio)
-               VALUES (%s, %s, %s, %s, %s, %s, %s);""",
-            (rentable_item_id, placa, chassi, renavam, km, combustivel, cambio)
-        )
-        conn.commit()
-        flash("Veículo cadastrado com sucesso!", "success")
-    except Exception as e:
-        conn.rollback()
-        flash(f"Erro ao salvar veículo: {str(e)}", "danger")
-    finally:
-        cursor.close()
-        conn.close()
-
-    return redirect(url_for('tela_cadastro_veiculo'))
-
-
-# ==========================================
-# 📊 MÓDULO DE INVENTÁRIO (ROTA)
-# ==========================================
-
-@app.route('/inventario', methods=['GET'])
-def inventario_geral():
-    """Busca todos os imóveis e veículos do banco de dados e exibe na tela."""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    try:
-        cursor.execute("SELECT id, endereco_completo, metro_quadrado, tipo_imovel FROM imoveis;")
-        lista_imoveis = cursor.fetchall()
-
-        cursor.execute("SELECT id, placa, quilometragem, combustivel FROM veiculos;")
-        lista_veiculos = cursor.fetchall()
-    except Exception as e:
-        lista_imoveis = []
-        lista_veiculos = []
-        flash(f"Erro ao carregar inventário: {str(e)}", "danger")
-    finally:
-        cursor.close()
-        conn.close()
-
-    return render_template('inventario.html', imoveis=lista_imoveis, veiculos=lista_veiculos)
-
-
-# Exemplo de como chamar o modelo no backend, caso vá adicionar alguma rota com IA
-def gerar_descricao_com_ia(prompt_texto):
-    response = ai_client.models.generate_content(
-        model=AI_MODEL_NAME,
-        contents=prompt_texto,
-    )
-    return response.text
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(debug=True)
 
-```
+import click
+from flask.cli import with_appcontext
+from database import get_db_connection
+
+@click.command("init-db")
+@with_appcontext
+def init_db_command():
+    """Inicializa o banco de dados aplicando o schema.sql"""
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        with open("schema.sql", "r", encoding="utf-8") as f:
+            sql_code = f.read()
+            cur.execute(sql_code)
+        conn.commit()
+        click.echo("Banco de dados inicializado com sucesso!")
+    except Exception as e:
+        conn.rollback()
+        click.echo(f"Erro ao inicializar o banco: {e}")
+    finally:
+        cur.close()
+        conn.close()
+
+# Registra o comando personalizado no Flask CLI
+app.cli.add_command(init_db_command)
