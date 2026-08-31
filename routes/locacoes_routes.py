@@ -1,4 +1,4 @@
-import datetime as dt
+﻿import datetime as dt
 import io
 import time
 import requests
@@ -21,13 +21,13 @@ from cliente_status import cliente_precisa_atualizar_comprovante
 
 locacoes_bp = Blueprint("locacoes", __name__, url_prefix="/locacoes")
 
-# ==== Listar locações ativas + Criar nova ====
+# ==== Listar locaÃ§Ãµes ativas + Criar nova ====
 @locacoes_bp.route("/", methods=["GET", "POST"])
 @login_required
 @requer_permissao(VER_LOCACOES)
 def listar_locacoes():
     if request.method == "POST" and not tem_permissao(CRIAR_LOCACAO):
-        flash("Você não tem permissão para criar locações.", "danger")
+        flash("VocÃª nÃ£o tem permissÃ£o para criar locaÃ§Ãµes.", "danger")
         return redirect(url_for("locacoes.listar_locacoes"))
 
     import traceback
@@ -39,7 +39,7 @@ def listar_locacoes():
         conn = get_db_connection()
         cur = conn.cursor(cursor_factory=RealDictCursor)
         try:
-            # Locações ativas
+            # LocaÃ§Ãµes ativas
             cur.execute("""
                 SELECT l.id, c.nome AS cliente_nome, ei.modelo AS equipamento_modelo,
                 ei.codigo_interno AS equipamento_codigo,
@@ -70,7 +70,7 @@ def listar_locacoes():
             cur.execute("SELECT id, nome FROM clientes WHERE company_id = %s ORDER BY nome ASC", (current_user.company_id,))
             clientes = [{"id": r["id"], "nome": r["nome"]} for r in cur.fetchall()]
 
-            # Equipamentos disponíveis, com os preços por frequência pro cálculo automático no front-end
+            # Equipamentos disponÃ­veis, com os preÃ§os por frequÃªncia pro cÃ¡lculo automÃ¡tico no front-end
             cur.execute("""
                 SELECT id, modelo, codigo_interno AS codigo, valor_semanal, valor_mensal
                 FROM equipment_items
@@ -87,7 +87,7 @@ def listar_locacoes():
             cur.close()
             conn.close()
 
-    # POST: cria locação
+    # POST: cria locaÃ§Ã£o
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
 
@@ -104,13 +104,13 @@ def listar_locacoes():
         frequencia = mapping.get(freq_in, freq_in)
 
         if frequencia not in ("WEEKLY", "MONTHLY"):
-            flash("Frequência inválida. Selecione semanal ou mensal.", "warning")
+            flash("FrequÃªncia invÃ¡lida. Selecione semanal ou mensal.", "warning")
             return redirect(url_for("locacoes.listar_locacoes"))
         if not cliente_id or not equipamento_id:
-            flash("Cliente e equipamento são obrigatórios.", "warning")
+            flash("Cliente e equipamento sÃ£o obrigatÃ³rios.", "warning")
             return redirect(url_for("locacoes.listar_locacoes"))
         if not data_inicio_str:
-            flash("Data de início é obrigatória.", "warning")
+            flash("Data de inÃ­cio Ã© obrigatÃ³ria.", "warning")
             return redirect(url_for("locacoes.listar_locacoes"))
 
         breadcrumb = "parse_datas"
@@ -125,18 +125,18 @@ def listar_locacoes():
         data_inicio = parse_date_flexible(data_inicio_str)
         data_fim = parse_date_flexible(data_fim_str) if data_fim_str else None
         if data_fim and data_fim < data_inicio:
-            flash("Data fim não pode ser anterior à data de início.", "warning")
+            flash("Data fim nÃ£o pode ser anterior Ã  data de inÃ­cio.", "warning")
             return redirect(url_for("locacoes.listar_locacoes"))
 
         breadcrumb = "buscar_cliente_equipamento"
         cur.execute("SELECT asaas_id, nome, cpf, endereco FROM clientes WHERE id=%s", (cliente_id,))
         cliente = cur.fetchone()
         if not cliente:
-            flash("Cliente não encontrado.", "danger")
+            flash("Cliente nÃ£o encontrado.", "danger")
             return redirect(url_for("locacoes.listar_locacoes"))
         asaas_customer_id = cliente["asaas_id"]
         if not asaas_customer_id:
-            flash("Cliente sem integração Asaas (asaas_id ausente).", "danger")
+            flash("Cliente sem integraÃ§Ã£o Asaas (asaas_id ausente).", "danger")
             return redirect(url_for("locacoes.listar_locacoes"))
 
         cur.execute("""
@@ -145,10 +145,10 @@ def listar_locacoes():
         """, (equipamento_id,))
         equipamento = cur.fetchone()
         if not equipamento:
-            flash("Equipamento não encontrado.", "danger")
+            flash("Equipamento nÃ£o encontrado.", "danger")
             return redirect(url_for("locacoes.listar_locacoes"))
         if equipamento["status"] != "disponivel":
-            flash("Equipamento indisponível para locação.", "warning")
+            flash("Equipamento indisponÃ­vel para locaÃ§Ã£o.", "warning")
             return redirect(url_for("locacoes.listar_locacoes"))
 
         breadcrumb = "calcular_valor"
@@ -157,8 +157,8 @@ def listar_locacoes():
         if valor is None:
             freq_label = "semanal" if frequencia == "WEEKLY" else "mensal"
             flash(
-                f"Este equipamento não tem preço cadastrado para locação {freq_label}. "
-                f"Cadastre o preço no cadastro do equipamento antes de criar a locação.",
+                f"Este equipamento nÃ£o tem preÃ§o cadastrado para locaÃ§Ã£o {freq_label}. "
+                f"Cadastre o preÃ§o no cadastro do equipamento antes de criar a locaÃ§Ã£o.",
                 "warning",
             )
             return redirect(url_for("locacoes.listar_locacoes"))
@@ -168,7 +168,7 @@ def listar_locacoes():
         assinatura_imagem = request.form.get("assinatura_imagem_contrato")
         nome_assinante = (request.form.get("nome_assinante_contrato") or "").strip()
         if not assinatura_imagem or not nome_assinante:
-            flash("A assinatura do contrato é obrigatória para criar a locação.", "warning")
+            flash("A assinatura do contrato Ã© obrigatÃ³ria para criar a locaÃ§Ã£o.", "warning")
             return redirect(url_for("locacoes.listar_locacoes"))
 
         breadcrumb = "criar_locacao"
@@ -195,7 +195,7 @@ def listar_locacoes():
             return redirect(url_for("locacoes.listar_locacoes"))
 
         conn.commit()
-        flash("Locação criada, contrato gerado em PDF e assinatura recorrente configurada no Asaas! "
+        flash("LocaÃ§Ã£o criada, contrato gerado em PDF e assinatura recorrente configurada no Asaas! "
               "Preencha o checklist de entrega antes de liberar o equipamento.", "success")
         return redirect(url_for("checklists.novo", locacao_id=locacao_id, tipo="entrega"))
 
@@ -205,17 +205,17 @@ def listar_locacoes():
         traceback.print_exc()
         detalhe = getattr(e.diag, "message_detail", "")
         msg = detalhe or (e.pgerror or str(e))
-        flash(f"Erro ao criar locação ({breadcrumb}): {msg}", "danger")
+        flash(f"Erro ao criar locaÃ§Ã£o ({breadcrumb}): {msg}", "danger")
     except ValueError as e:
         conn.rollback()
         print("ERRO ValueError em", breadcrumb, "=>", e)
         traceback.print_exc()
-        flash(f"Data/valor inválido ({breadcrumb}): {str(e)}", "danger")
+        flash(f"Data/valor invÃ¡lido ({breadcrumb}): {str(e)}", "danger")
     except Exception as e:
         conn.rollback()
         print("ERRO inesperado em", breadcrumb, "=>", e)
         traceback.print_exc()
-        flash(f"Erro inesperado ao criar locação ({breadcrumb}): {repr(e)}", "danger")
+        flash(f"Erro inesperado ao criar locaÃ§Ã£o ({breadcrumb}): {repr(e)}", "danger")
     finally:
         cur.close()
         conn.close()
@@ -229,37 +229,37 @@ class AsaasError(Exception):
 
 
 class ComprovanteDesatualizadoError(Exception):
-    """Cliente precisa reenviar o comprovante de residência antes de alugar de novo."""
+    """Cliente precisa reenviar o comprovante de residÃªncia antes de alugar de novo."""
     pass
 
 
 class AcessoNegadoError(Exception):
-    """Cliente ou equipamento pertence a outra empresa (violação de isolamento multi-tenant)."""
+    """Cliente ou equipamento pertence a outra empresa (violaÃ§Ã£o de isolamento multi-tenant)."""
     pass
 
 
-# ==== Criação de locação (reaproveitada pelo formulário manual acima e pela conversão de orçamento) ====
+# ==== CriaÃ§Ã£o de locaÃ§Ã£o (reaproveitada pelo formulÃ¡rio manual acima e pela conversÃ£o de orÃ§amento) ====
 def criar_locacao_interna(cur, cliente, equipamento, cliente_id, equipamento_id,
                            data_inicio, data_fim, frequencia, valor, observacoes,
                            assinatura_dados=None):
     """
-    Cria a assinatura no Asaas, grava a locação, atualiza o estoque do equipamento
-    e gera o contrato em PDF. Não faz commit — quem chama controla a transação.
+    Cria a assinatura no Asaas, grava a locaÃ§Ã£o, atualiza o estoque do equipamento
+    e gera o contrato em PDF. NÃ£o faz commit â€” quem chama controla a transaÃ§Ã£o.
     Levanta AsaasError em vez de flash/redirect, para o chamador decidir o que fazer
-    (ex.: seguir convertendo os próximos itens de um orçamento mesmo se este falhar).
+    (ex.: seguir convertendo os prÃ³ximos itens de um orÃ§amento mesmo se este falhar).
 
-    assinatura_dados, se informado, é um dict com imagem_base64/nome_assinante/request
+    assinatura_dados, se informado, Ã© um dict com imagem_base64/nome_assinante/request
     (mais usuario_id/cliente_id/motivo_substituicao/substitui_assinatura_id opcionais)
-    — usado só pelo formulário manual (que já coleta a assinatura no canvas); a
-    conversão de orçamento (bloco 6) não passa isso, e o contrato sai sem
-    assinatura embutida nesse caso, como já era antes deste bloco.
+    â€” usado sÃ³ pelo formulÃ¡rio manual (que jÃ¡ coleta a assinatura no canvas); a
+    conversÃ£o de orÃ§amento (bloco 6) nÃ£o passa isso, e o contrato sai sem
+    assinatura embutida nesse caso, como jÃ¡ era antes deste bloco.
 
     Antes de qualquer outra coisa, valida que cliente_id e equipamento_id pertencem
-    à empresa do usuário logado — busca o company_id direto do banco (não confia no
-    dict já buscado pelo chamador), pra proteger a função mesmo que um chamador
-    futuro esqueça de filtrar por empresa. Levanta AcessoNegadoError caso não bata.
+    Ã  empresa do usuÃ¡rio logado â€” busca o company_id direto do banco (nÃ£o confia no
+    dict jÃ¡ buscado pelo chamador), pra proteger a funÃ§Ã£o mesmo que um chamador
+    futuro esqueÃ§a de filtrar por empresa. Levanta AcessoNegadoError caso nÃ£o bata.
 
-    Retorna o id da locação criada.
+    Retorna o id da locaÃ§Ã£o criada.
     """
     company_id = current_user.company_id
 
@@ -267,26 +267,26 @@ def criar_locacao_interna(cur, cliente, equipamento, cliente_id, equipamento_id,
     cliente_company = cur.fetchone()
     if not cliente_company or cliente_company["company_id"] != company_id:
         raise AcessoNegadoError(
-            "Cliente não encontrado ou não pertence à sua empresa. Requisição recusada."
+            "Cliente nÃ£o encontrado ou nÃ£o pertence Ã  sua empresa. RequisiÃ§Ã£o recusada."
         )
 
     cur.execute("SELECT company_id FROM equipment_items WHERE id=%s", (equipamento_id,))
     equipamento_company = cur.fetchone()
     if not equipamento_company or equipamento_company["company_id"] != company_id:
         raise AcessoNegadoError(
-            "Equipamento não encontrado ou não pertence à sua empresa. Requisição recusada."
+            "Equipamento nÃ£o encontrado ou nÃ£o pertence Ã  sua empresa. RequisiÃ§Ã£o recusada."
         )
 
     if cliente_precisa_atualizar_comprovante(cur, cliente_id):
         raise ComprovanteDesatualizadoError(
-            f"{cliente['nome']} está sem alugar há mais de 90 dias e precisa reenviar o "
-            "comprovante de residência antes de criar uma nova locação. "
+            f"{cliente['nome']} estÃ¡ sem alugar hÃ¡ mais de 90 dias e precisa reenviar o "
+            "comprovante de residÃªncia antes de criar uma nova locaÃ§Ã£o. "
             "Atualize o cadastro do cliente e tente novamente."
         )
 
     asaas_customer_id = cliente["asaas_id"]
     if not asaas_customer_id:
-        raise AsaasError("Cliente sem integração Asaas (asaas_id ausente).")
+        raise AsaasError("Cliente sem integraÃ§Ã£o Asaas (asaas_id ausente).")
 
     modelo, placa = equipamento["modelo"], equipamento["codigo_interno"]
 
@@ -295,7 +295,7 @@ def criar_locacao_interna(cur, cliente, equipamento, cliente_id, equipamento_id,
         "billingType": "BOLETO",
         "value": valor,
         "cycle": frequencia,  # 'WEEKLY' ou 'MONTHLY'
-        "description": f"Locação {equipamento.get('nome') or modelo} - {placa} ({cliente['nome']})",
+        "description": f"LocaÃ§Ã£o {equipamento.get('nome') or modelo} - {placa} ({cliente['nome']})",
         "nextDueDate": data_inicio.strftime("%Y-%m-%d"),
     }
     if data_fim:
@@ -303,7 +303,7 @@ def criar_locacao_interna(cur, cliente, equipamento, cliente_id, equipamento_id,
 
     asaas = obter_config_asaas(cur, current_user.company_id)
     if not asaas["api_key"] or not asaas["base_url"]:
-        raise AsaasError("Configuração do Asaas ausente. Configure a chave da empresa em /configuracoes.")
+        raise AsaasError("ConfiguraÃ§Ã£o do Asaas ausente. Configure a chave da empresa em /configuracoes.")
     try:
         resp = requests.post(
             f"{asaas['base_url']}/subscriptions",
@@ -312,7 +312,7 @@ def criar_locacao_interna(cur, cliente, equipamento, cliente_id, equipamento_id,
             timeout=30,
         )
     except requests.RequestException as rexc:
-        raise AsaasError(f"Falha de conexão com Asaas: {str(rexc)}") from rexc
+        raise AsaasError(f"Falha de conexÃ£o com Asaas: {str(rexc)}") from rexc
 
     if resp.status_code not in (200, 201):
         body = resp.text if resp is not None else "<sem corpo>"
@@ -320,7 +320,7 @@ def criar_locacao_interna(cur, cliente, equipamento, cliente_id, equipamento_id,
 
     asaas_subscription_id = resp.json().get("id")
     if not asaas_subscription_id:
-        raise AsaasError("Resposta do Asaas não retornou id da assinatura.")
+        raise AsaasError("Resposta do Asaas nÃ£o retornou id da assinatura.")
 
     cur.execute("""
         INSERT INTO locacoes (
@@ -341,7 +341,7 @@ def criar_locacao_interna(cur, cliente, equipamento, cliente_id, equipamento_id,
         "UPDATE equipment_items SET status='alugado', quantidade_disponivel=0 WHERE id=%s",
         (equipamento_id,),
     )
-    registrar_movimentacao(cur, equipamento_id, "saida", f"Locação #{locacao_id} criada", int(current_user.id))
+    registrar_movimentacao(cur, equipamento_id, "saida", f"LocaÃ§Ã£o #{locacao_id} criada", int(current_user.id))
 
     cur.execute("SELECT nome, cnpj FROM companies WHERE id=%s", (locacao_row["company_id"],))
     company = cur.fetchone()
@@ -364,7 +364,7 @@ def criar_locacao_interna(cur, cliente, equipamento, cliente_id, equipamento_id,
         )
         cur.execute("SELECT * FROM assinaturas WHERE id=%s", (assinatura_id,))
         assinatura_row = cur.fetchone()
-        # imagem_base64 já vem como data-URL completa (canvas.toDataURL()),
+        # imagem_base64 jÃ¡ vem como data-URL completa (canvas.toDataURL()),
         # reaproveitada direto no <img src="..."> do PDF.
         assinatura_pdf = {
             "imagem_data_uri": assinatura_dados["imagem_base64"],
@@ -385,7 +385,7 @@ def criar_locacao_interna(cur, cliente, equipamento, cliente_id, equipamento_id,
     return locacao_id
 
 
-# ==== Editar locação + listar boletos ====
+# ==== Editar locaÃ§Ã£o + listar boletos ====
 @locacoes_bp.route("/<int:id>/editar", methods=["GET", "POST"])
 @login_required
 @requer_permissao(GERENCIAR_LOCACOES)
@@ -433,20 +433,20 @@ def editar_locacao(id):
                         timeout=30
                     )
                 if resp.status_code not in (200, 201):
-                    flash(f"Locação atualizada, mas falhou no Asaas: {resp.text}", "warning")
+                    flash(f"LocaÃ§Ã£o atualizada, mas falhou no Asaas: {resp.text}", "warning")
                 else:
-                    flash("Locação e assinatura atualizadas!", "success")
+                    flash("LocaÃ§Ã£o e assinatura atualizadas!", "success")
             else:
-                flash("Locação e assinatura atualizadas!", "success")
+                flash("LocaÃ§Ã£o e assinatura atualizadas!", "success")
         except Exception as e:
-            flash(f"Erro ao atualizar locação: {e}", "danger")
+            flash(f"Erro ao atualizar locaÃ§Ã£o: {e}", "danger")
 
         conn.commit()
         cur.close()
         conn.close()
         return redirect(url_for("locacoes.editar_locacao", id=id))
 
-    # Método GET: buscar dados para exibir no formulário
+    # MÃ©todo GET: buscar dados para exibir no formulÃ¡rio
     cur.execute("""
         SELECT id, cliente_id, moto_id, equipment_item_id, company_id, cancelado,
         data_inicio, data_fim, valor, frequencia_pagamento, observacoes, asaas_subscription_id
@@ -500,7 +500,7 @@ def editar_locacao(id):
         assinatura_contrato=assinatura_contrato,
     )
 
-# ==== Listar locações canceladas ====
+# ==== Listar locaÃ§Ãµes canceladas ====
 @locacoes_bp.route("/canceladas")
 @login_required
 @requer_permissao(GERENCIAR_LOCACOES)
@@ -508,26 +508,19 @@ def canceladas():
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("""
-<<<<<<< HEAD
         SELECT l.id, l.data_inicio, l.data_fim, l.valor, l.frequencia_pagamento,
-        l.pagamento_status, l.valor_pago, l.asaas_subscription_id, l.asaas_payment_id,
-        l.boleto_url, l.contrato_arquivo,
-        c.nome AS cliente_nome, ei.modelo AS moto_modelo, ei.codigo_interno AS moto_placa
-=======
-        SELECT
-            l.id, l.data_inicio, l.data_fim, l.valor, l.frequencia_pagamento,
-            l.pagamento_status, l.valor_pago, l.asaas_subscription_id, l.asaas_payment_id, l.boleto_url,
-            c.nome AS cliente_nome, ei.modelo AS equipamento_modelo, ei.codigo_interno AS equipamento_codigo,
-            COALESCE(bcount.total_boletos, 0) AS total_boletos,
-            COALESCE(bcount.boletos_pagos, 0) AS boletos_pagos,
-            COALESCE(bcount.boletos_pendentes, 0) AS boletos_pendentes,
-            COALESCE(bcount.boletos_vencidos, 0) AS boletos_vencidos,
-            COALESCE(bcount.boletos_cancelados, 0) AS boletos_cancelados,
-            COALESCE(bcount.total_recebido_boletos, 0) AS total_recebido_boletos,
-            ultimo.status AS status_ultimo_boleto,
-            ultimo.data_vencimento AS ultimo_vencimento,
-            ultimo.boleto_url AS url_ultimo_boleto
->>>>>>> main
+               l.pagamento_status, l.valor_pago, l.asaas_subscription_id, l.asaas_payment_id,
+               l.boleto_url, l.contrato_arquivo,
+               c.nome AS cliente_nome, ei.modelo AS equipamento_modelo, ei.codigo_interno AS equipamento_codigo,
+               COALESCE(bcount.total_boletos, 0) AS total_boletos,
+               COALESCE(bcount.boletos_pagos, 0) AS boletos_pagos,
+               COALESCE(bcount.boletos_pendentes, 0) AS boletos_pendentes,
+               COALESCE(bcount.boletos_vencidos, 0) AS boletos_vencidos,
+               COALESCE(bcount.boletos_cancelados, 0) AS boletos_cancelados,
+               COALESCE(bcount.total_recebido_boletos, 0) AS total_recebido_boletos,
+               ultimo.status AS status_ultimo_boleto,
+               ultimo.data_vencimento AS ultimo_vencimento,
+               ultimo.boleto_url AS url_ultimo_boleto
         FROM locacoes l
         JOIN clientes c ON l.cliente_id = c.id
         JOIN equipment_items ei ON l.equipment_item_id = ei.id
@@ -558,9 +551,9 @@ def canceladas():
     conn.close()
     return render_template("locacoes_canceladas.html", canceladas=locacoes)
 
-# ==== Lógica de cancelamento (reaproveitada por cancelar_locacao e pelo checklist de devolução) ====
+# ==== LÃ³gica de cancelamento (reaproveitada por cancelar_locacao e pelo checklist de devoluÃ§Ã£o) ====
 def executar_cancelamento_locacao(cur, locacao_id, equipamento_id, asaas_subscription_id, company_id):
-    """Cancela a assinatura no Asaas (se existir) e libera o equipamento. Não faz commit — quem chama controla a transação."""
+    """Cancela a assinatura no Asaas (se existir) e libera o equipamento. NÃ£o faz commit â€” quem chama controla a transaÃ§Ã£o."""
     if asaas_subscription_id:
         asaas = obter_config_asaas(cur, company_id)
         resp = requests.post(
@@ -573,14 +566,14 @@ def executar_cancelamento_locacao(cur, locacao_id, equipamento_id, asaas_subscri
 
     hoje = dt.date.today().strftime("%Y-%m-%d")
     cur.execute("UPDATE locacoes SET cancelado=TRUE, data_fim=%s WHERE id=%s", (hoje, locacao_id))
-    registrar_movimentacao(cur, equipamento_id, "entrada", f"Locação #{locacao_id} finalizada", int(current_user.id))
+    registrar_movimentacao(cur, equipamento_id, "entrada", f"LocaÃ§Ã£o #{locacao_id} finalizada", int(current_user.id))
     cur.execute(
         "UPDATE equipment_items SET status='disponivel', quantidade_disponivel=1 WHERE id=%s",
         (equipamento_id,),
     )
 
 
-# ==== Cancelar locação específica ====
+# ==== Cancelar locaÃ§Ã£o especÃ­fica ====
 @locacoes_bp.route("/<int:id>/cancelar", methods=["POST"])
 @login_required
 @requer_permissao(GERENCIAR_LOCACOES)
@@ -590,13 +583,13 @@ def cancelar_locacao(id):
     try:
         cur.execute("SELECT 1 FROM checklists WHERE locacao_id=%s AND tipo='devolucao'", (id,))
         if not cur.fetchone():
-            flash("Preencha o checklist de devolução antes de finalizar esta locação.", "warning")
+            flash("Preencha o checklist de devoluÃ§Ã£o antes de finalizar esta locaÃ§Ã£o.", "warning")
             return redirect(url_for("checklists.novo", locacao_id=id, tipo="devolucao"))
 
         cur.execute("SELECT asaas_subscription_id, equipment_item_id, company_id FROM locacoes WHERE id=%s", (id,))
         row = cur.fetchone()
         if not row:
-            flash("Locação não encontrada.", "danger")
+            flash("LocaÃ§Ã£o nÃ£o encontrada.", "danger")
             return redirect(url_for("locacoes.listar_locacoes"))
 
         if isinstance(row, dict):
@@ -610,21 +603,21 @@ def cancelar_locacao(id):
 
         executar_cancelamento_locacao(cur, id, equipamento_id, asaas_subscription_id, locacao_company_id)
         conn.commit()
-        flash("Locação cancelada!", "info")
+        flash("LocaÃ§Ã£o cancelada!", "info")
 
     except psycopg2.Error as e:
         conn.rollback()
         motivo = e.pgerror or str(e)
         detalhe = getattr(e.diag, "message_detail", "")
         if detalhe:
-            flash(f"Erro ao cancelar locação: {detalhe}", "danger")
+            flash(f"Erro ao cancelar locaÃ§Ã£o: {detalhe}", "danger")
         else:
-            flash(f"Erro ao cancelar locação: {motivo}", "danger")
+            flash(f"Erro ao cancelar locaÃ§Ã£o: {motivo}", "danger")
 
     except Exception as e:
         conn.rollback()
-        print(f"Erro inesperado ao cancelar locação: {repr(e)} (tipo: {type(e)})")
-        flash(f"Erro inesperado ao cancelar locação: {repr(e)}", "danger")
+        print(f"Erro inesperado ao cancelar locaÃ§Ã£o: {repr(e)} (tipo: {type(e)})")
+        flash(f"Erro inesperado ao cancelar locaÃ§Ã£o: {repr(e)}", "danger")
 
     finally:
         cur.close()
@@ -642,7 +635,7 @@ def sincronizar_boletos_manual(id):
         cur.execute("SELECT asaas_subscription_id, company_id FROM locacoes WHERE id=%s", (id,))
         row = cur.fetchone()
         if not row or not row["asaas_subscription_id"]:
-            flash("Assinatura Asaas não vinculada à locação.", "warning")
+            flash("Assinatura Asaas nÃ£o vinculada Ã  locaÃ§Ã£o.", "warning")
             return redirect(url_for("locacoes.editar_locacao", id=id))
 
         sub_id = row["asaas_subscription_id"]
@@ -710,7 +703,7 @@ def contrato_pdf(locacao_id):
         cur.execute("SELECT contrato_arquivo FROM locacoes WHERE id = %s", (locacao_id,))
         result = cur.fetchone()
         if not result or not result["contrato_arquivo"]:
-            flash("Contrato não encontrado.", "warning")
+            flash("Contrato nÃ£o encontrado.", "warning")
             return redirect(url_for("locacoes.listar_locacoes"))
         contrato_arquivo = result["contrato_arquivo"]
 
@@ -721,7 +714,7 @@ def contrato_pdf(locacao_id):
         conn.close()
 
 
-# ==== Gerar recibo de locação paga (PDF na hora, não fica salvo em disco) ====
+# ==== Gerar recibo de locaÃ§Ã£o paga (PDF na hora, nÃ£o fica salvo em disco) ====
 @locacoes_bp.route("/recibo/<int:locacao_id>/pdf")
 @login_required
 @requer_permissao(VER_LOCACOES)
@@ -736,11 +729,11 @@ def recibo_pdf(locacao_id):
         """, (locacao_id,))
         locacao = cur.fetchone()
         if not locacao:
-            flash("Locação não encontrada.", "warning")
+            flash("LocaÃ§Ã£o nÃ£o encontrada.", "warning")
             return redirect(url_for("locacoes.listar_locacoes"))
 
         if locacao["pagamento_status"] not in STATUS_RECEBIDO:
-            flash("Essa locação ainda não tem pagamento confirmado.", "warning")
+            flash("Essa locaÃ§Ã£o ainda nÃ£o tem pagamento confirmado.", "warning")
             return redirect(url_for("locacoes.listar_locacoes"))
 
         cur.execute("SELECT nome, cpf FROM clientes WHERE id=%s", (locacao["cliente_id"],))
