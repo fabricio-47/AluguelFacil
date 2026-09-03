@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% block title %}Login{% endblock %}
 {% block content %}
 <div class="row justify-content-center mt-4">
@@ -9,7 +9,7 @@
       </div>
       <div class="card-body">
 
-        {# Mensagens flash (caso o base.html não já renderize) #}
+        {# Mensagens flash (caso o base.html nÃ£o jÃ¡ renderize) #}
         {% with messages = get_flashed_messages(with_categories=True) %}
           {% if messages %}
             {% for category, message in messages %}
@@ -22,7 +22,7 @@
         {% endwith %}
 
         <form method="post" action="{{ url_for('auth.login') }}">
-          {# suporte a redirect pós-login #}
+          {# suporte a redirect pÃ³s-login #}
           {% if request.args.get('next') %}
             <input type="hidden" name="next" value="{{ request.args.get('next') }}">
           {% endif %}
@@ -50,8 +50,8 @@
                 Lembrar-me
               </label>
             </div>
-            {# Link comentado com Jinja para não quebrar: recuperar senha ainda não implementado #}
-            {# <a href="{{ url_for('auth.recuperar_senha') }}">Esqueci minha senha</a> #}
+            {# Link comentado com Jinja para nÃ£o quebrar: recuperar senha ainda nÃ£o implementado #}
+            <a href="{{ url_for('auth.recuperar_senha') }}">Esqueci minha senha</a>
           </div>
 
           <button class="btn btn-success w-100" type="submit">
@@ -60,10 +60,12 @@
         </form>
 
         <small class="text-muted d-block mt-3">
-          O usuário inicial deve ser criado manualmente no banco de dados.
+          O usuÃ¡rio inicial deve ser criado manualmente no banco de dados.
         </small>
       </div>
     </div>
   </div>
 </div>
 {% endblock %}
+
+

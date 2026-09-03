@@ -69,3 +69,96 @@ def logout():
     logout_user()
     flash("Logout realizado!", "success")
     return redirect(url_for("auth.login"))
+
+import secrets
+import datetime as dt
+from werkzeug.security import generate_password_hash
+from email_utils import enviar_email
+
+
+@auth_bp.route("/recuperar-senha", methods=["GET", "POST"])
+def recuperar_senha():
+    if request.method == "POST":
+        email = request.form.get("email")
+        user = User.get_by_email(email)
+        if user:
+            token = secrets.token_urlsafe(32)
+            expira_em = dt.datetime.utcnow() + dt.timedelta(hours=1)
+            conn = get_db_connection()
+            try:
+                cur = conn.cursor()
+                cur.execute(
+                    "INSERT INTO password_resets (usuario_id, token, expira_em) VALUES (%s, %s, %s)",
+                    (user.id, token, expira_em),
+                )
+                conn.commit()
+            finally:
+                conn.close()
+
+            link = url_for("auth.resetar_senha", token=token, _external=True)
+            corpo = f"""
+                <p>Ola,</p>
+                <p>Recebemos um pedido para redefinir sua senha no AluguelFacil.</p>
+                <p><a href="{link}">Clique aqui para criar uma nova senha</a></p>
+                <p>Esse link expira em 1 hora. Se voce nao pediu isso, ignore este e-mail.</p>
+            """
+            try:
+                enviar_email(email, "Recuperacao de senha - AluguelFacil", corpo)
+            except Exception as e:
+                flash(f"Nao foi possivel enviar o e-mail: {e}", "danger")
+                return render_template("recuperar_senha.html")
+
+        flash("Se esse e-mail estiver cadastrado, enviamos um link de recuperacao.", "info")
+        return redirect(url_for("auth.login"))
+
+    return render_template("recuperar_senha.html")
+
+
+@auth_bp.route("/resetar-senha/<token>", methods=["GET", "POST"])
+def resetar_senha(token):
+    conn = get_db_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT * FROM password_resets WHERE token = %s AND usado = FALSE AND expira_em > CURRENT_TIMESTAMP",
+            (token,),
+        )
+        reset = cur.fetchone()
+    finally:
+        conn.close()
+
+    if not reset:
+        flash("Link de recuperacao invalido ou expirado. Peca um novo.", "danger")
+        return redirect(url_for("auth.recuperar_senha"))
+
+    if request.method == "POST":
+        nova_senha = request.form.get("nova_senha")
+        confirmacao = request.form.get("confirmacao_senha")
+
+        if not nova_senha or len(nova_senha) < 8:
+            flash("A senha precisa ter no minimo 8 caracteres.", "danger")
+            return render_template("resetar_senha_form.html", token=token)
+
+        if nova_senha != confirmacao:
+            flash("As senhas nao coincidem.", "danger")
+            return render_template("resetar_senha_form.html", token=token)
+
+        conn = get_db_connection()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "UPDATE usuarios SET senha = %s WHERE id = %s",
+                (generate_password_hash(nova_senha), reset["usuario_id"]),
+            )
+            cur.execute(
+                "UPDATE password_resets SET usado = TRUE WHERE token = %s",
+                (token,),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        flash("Senha alterada com sucesso! Faca login com a nova senha.", "success")
+        return redirect(url_for("auth.login"))
+
+    return render_template("resetar_senha_form.html", token=token)

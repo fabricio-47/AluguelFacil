@@ -1,0 +1,44 @@
+﻿{% extends "base.html" %}
+{% block title %}Recuperar Senha{% endblock %}
+{% block content %}
+<div class="row justify-content-center mt-4">
+  <div class="col-md-5">
+    <div class="card shadow-sm">
+      <div class="card-header bg-primary text-white">
+        <i class="fa-solid fa-key me-1"></i> Recuperar Senha
+      </div>
+      <div class="card-body">
+        {% with messages = get_flashed_messages(with_categories=True) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <p class="text-muted">Digite seu e-mail cadastrado. Se ele existir no sistema, vamos enviar um link para voce criar uma senha nova.</p>
+
+        <form method="post" action="{{ url_for('auth.recuperar_senha') }}">
+          <div class="mb-3">
+            <label class="form-label">E-mail</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="fa-solid fa-envelope"></i></span>
+              <input type="email" name="email" class="form-control" placeholder="email@exemplo.com" required autofocus>
+            </div>
+          </div>
+          <button class="btn btn-primary w-100" type="submit">
+            <i class="fa-solid fa-paper-plane me-1"></i> Enviar link de recuperacao
+          </button>
+        </form>
+
+        <small class="text-muted d-block mt-3">
+          <a href="{{ url_for('auth.login') }}">Voltar para o login</a>
+        </small>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

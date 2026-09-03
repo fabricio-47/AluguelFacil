@@ -1,0 +1,40 @@
+﻿{% extends "base.html" %}
+{% block title %}Criar Nova Senha{% endblock %}
+{% block content %}
+<div class="row justify-content-center mt-4">
+  <div class="col-md-5">
+    <div class="card shadow-sm">
+      <div class="card-header bg-primary text-white">
+        <i class="fa-solid fa-lock me-1"></i> Criar Nova Senha
+      </div>
+      <div class="card-body">
+        {% with messages = get_flashed_messages(with_categories=True) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <form method="post" action="{{ url_for('auth.resetar_senha', token=token) }}">
+          <div class="mb-3">
+            <label class="form-label">Nova Senha</label>
+            <input type="password" name="nova_senha" class="form-control" minlength="8" required>
+            <div class="form-text">Minimo de 8 caracteres.</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Confirmar Nova Senha</label>
+            <input type="password" name="confirmacao_senha" class="form-control" required>
+          </div>
+          <button class="btn btn-success w-100" type="submit">
+            <i class="fa-solid fa-check me-1"></i> Salvar nova senha
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
