@@ -82,31 +82,43 @@ def recuperar_senha():
         email = request.form.get("email")
         user = User.get_by_email(email)
         if user:
-            token = secrets.token_urlsafe(32)
-            expira_em = dt.datetime.utcnow() + dt.timedelta(hours=1)
             conn = get_db_connection()
             try:
                 cur = conn.cursor()
                 cur.execute(
-                    "INSERT INTO password_resets (usuario_id, token, expira_em) VALUES (%s, %s, %s)",
-                    (user.id, token, expira_em),
+                    "SELECT COUNT(*) AS total FROM password_resets WHERE usuario_id = %s AND criado_em > NOW() - INTERVAL '15 minutes'",
+                    (user.id,),
                 )
-                conn.commit()
+                total_recente = cur.fetchone()["total"]
             finally:
                 conn.close()
 
-            link = url_for("auth.resetar_senha", token=token, _external=True)
-            corpo = f"""
-                <p>Ola,</p>
-                <p>Recebemos um pedido para redefinir sua senha no AluguelFacil.</p>
-                <p><a href="{link}">Clique aqui para criar uma nova senha</a></p>
-                <p>Esse link expira em 1 hora. Se voce nao pediu isso, ignore este e-mail.</p>
-            """
-            try:
-                enviar_email(email, "Recuperacao de senha - AluguelFacil", corpo)
-            except Exception as e:
-                flash(f"Nao foi possivel enviar o e-mail: {e}", "danger")
-                return render_template("recuperar_senha.html")
+            if total_recente < 3:
+                token = secrets.token_urlsafe(32)
+                expira_em = dt.datetime.utcnow() + dt.timedelta(hours=1)
+                conn = get_db_connection()
+                try:
+                    cur = conn.cursor()
+                    cur.execute(
+                        "INSERT INTO password_resets (usuario_id, token, expira_em) VALUES (%s, %s, %s)",
+                        (user.id, token, expira_em),
+                    )
+                    conn.commit()
+                finally:
+                    conn.close()
+
+                link = url_for("auth.resetar_senha", token=token, _external=True)
+                corpo = f"""
+                    <p>Ola,</p>
+                    <p>Recebemos um pedido para redefinir sua senha no AluguelFacil.</p>
+                    <p><a href="{link}">Clique aqui para criar uma nova senha</a></p>
+                    <p>Esse link expira em 1 hora. Se voce nao pediu isso, ignore este e-mail.</p>
+                """
+                try:
+                    enviar_email(email, "Recuperacao de senha - AluguelFacil", corpo)
+                except Exception as e:
+                    flash(f"Nao foi possivel enviar o e-mail: {e}", "danger")
+                    return render_template("recuperar_senha.html")
 
         flash("Se esse e-mail estiver cadastrado, enviamos um link de recuperacao.", "info")
         return redirect(url_for("auth.login"))
