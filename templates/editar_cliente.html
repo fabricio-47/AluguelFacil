@@ -62,7 +62,11 @@
                      class="img-fluid rounded border" style="max-height: 120px;" alt="{{ rotulo }}">
               </div>
             {% endif %}
-            <input type="file" class="form-control" id="{{ campo }}" name="{{ campo }}" accept=".png,.jpg,.jpeg">
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <label for="{{ campo }}" class="btn btn-outline-secondary btn-sm mb-0">Escolher arquivo</label>
+              <span id="{{ campo }}_nome" class="text-muted small">Nenhum arquivo escolhido</span>
+            </div>
+            <input type="file" class="d-none" id="{{ campo }}" name="{{ campo }}" accept=".png,.jpg,.jpeg" onchange="atualizarNomeArquivo(this, '{{ campo }}_nome')">
             {% if cliente[coluna] %}
               <button type="submit" form="excluir-{{ campo }}" class="btn btn-sm btn-outline-danger mt-1">Excluir</button>
             {% endif %}
@@ -87,7 +91,11 @@
         </div>
         <video id="foto_cliente_video" class="d-none w-100 rounded mb-2" autoplay playsinline></video>
         <canvas id="foto_cliente_canvas" class="d-none"></canvas>
-        <input type="file" class="form-control mb-2" id="foto_cliente" name="foto_cliente" accept=".png,.jpg,.jpeg,.pdf" onchange="previewFotoCliente(this)">
+        <div class="d-flex align-items-center gap-2 mb-1">
+          <label for="foto_cliente" class="btn btn-outline-secondary btn-sm mb-0">Escolher arquivo</label>
+          <span id="foto_cliente_nome" class="text-muted small">Nenhum arquivo escolhido</span>
+        </div>
+        <input type="file" class="d-none" id="foto_cliente" name="foto_cliente" accept=".png,.jpg,.jpeg,.pdf" onchange="previewFotoCliente(this); atualizarNomeArquivo(this, 'foto_cliente_nome')">
         <div id="foto_cliente_webcam_controls">
           <button type="button" class="btn btn-outline-secondary btn-sm w-100" onclick="iniciarWebcamFotoCliente()">Usar webcam</button>
         </div>

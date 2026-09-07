@@ -51,15 +51,27 @@
           </div>
           <div class="col-md-4">
             <label for="doc_frente" class="form-label">Documento com foto (frente)</label>
-            <input type="file" class="form-control" id="doc_frente" name="doc_frente" accept=".png,.jpg,.jpeg">
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <label for="doc_frente" class="btn btn-outline-secondary btn-sm mb-0">Escolher arquivo</label>
+              <span id="doc_frente_nome" class="text-muted small">Nenhum arquivo escolhido</span>
+            </div>
+            <input type="file" class="d-none" id="doc_frente" name="doc_frente" accept=".png,.jpg,.jpeg" onchange="atualizarNomeArquivo(this, 'doc_frente_nome')">
           </div>
           <div class="col-md-4">
             <label for="doc_verso" class="form-label">Documento com foto (verso)</label>
-            <input type="file" class="form-control" id="doc_verso" name="doc_verso" accept=".png,.jpg,.jpeg">
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <label for="doc_verso" class="btn btn-outline-secondary btn-sm mb-0">Escolher arquivo</label>
+              <span id="doc_verso_nome" class="text-muted small">Nenhum arquivo escolhido</span>
+            </div>
+            <input type="file" class="d-none" id="doc_verso" name="doc_verso" accept=".png,.jpg,.jpeg" onchange="atualizarNomeArquivo(this, 'doc_verso_nome')">
           </div>
           <div class="col-md-4">
             <label for="comprovante_residencia" class="form-label">Comprovante de residência</label>
-            <input type="file" class="form-control" id="comprovante_residencia" name="comprovante_residencia" accept=".png,.jpg,.jpeg">
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <label for="comprovante_residencia" class="btn btn-outline-secondary btn-sm mb-0">Escolher arquivo</label>
+              <span id="comprovante_residencia_nome" class="text-muted small">Nenhum arquivo escolhido</span>
+            </div>
+            <input type="file" class="d-none" id="comprovante_residencia" name="comprovante_residencia" accept=".png,.jpg,.jpeg" onchange="atualizarNomeArquivo(this, 'comprovante_residencia_nome')">
           </div>
         </div>
       </div>
@@ -70,7 +82,11 @@
         </div>
         <video id="foto_cliente_video" class="d-none w-100 rounded mb-2" autoplay playsinline></video>
         <canvas id="foto_cliente_canvas" class="d-none"></canvas>
-        <input type="file" class="form-control mb-2" id="foto_cliente" name="foto_cliente" accept=".png,.jpg,.jpeg,.pdf" onchange="previewFotoCliente(this)">
+        <div class="d-flex align-items-center gap-2 mb-1">
+          <label for="foto_cliente" class="btn btn-outline-secondary btn-sm mb-0">Escolher arquivo</label>
+          <span id="foto_cliente_nome" class="text-muted small">Nenhum arquivo escolhido</span>
+        </div>
+        <input type="file" class="d-none" id="foto_cliente" name="foto_cliente" accept=".png,.jpg,.jpeg,.pdf" onchange="previewFotoCliente(this); atualizarNomeArquivo(this, 'foto_cliente_nome')">
         <div id="foto_cliente_webcam_controls">
           <button type="button" class="btn btn-outline-secondary btn-sm w-100" onclick="iniciarWebcamFotoCliente()">Usar webcam</button>
         </div>
