@@ -1,274 +1,248 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}AluguelFácil{% endblock %}</title>
-  <!-- Bootstrap CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- Font Awesome para ícones -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   {% block extra_head %}{% endblock %}
   <style>
-    body { background-color: #f8f9fa; }
-    .navbar-brand { font-weight: bold; letter-spacing: 1px; }
-    .nav-link.active, .dropdown-item.active { font-weight: bold; color: #ffc107 !important; }
+    :root { --sidebar-width: 250px; }
+    body { background-color: #f8f9fa; margin: 0; }
     footer { margin-top: 40px; padding: 15px 0; background: #212529; color: #aaa; text-align: center; font-size: 0.9rem; }
+
+    #sidebarMenu {
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      width: var(--sidebar-width);
+      background: #212529;
+      overflow-y: auto;
+      z-index: 1040;
+      transform: translateX(-100%);
+      transition: transform 0.25s ease-in-out;
+      display: flex;
+      flex-direction: column;
+    }
+    #sidebarMenu.show { transform: translateX(0); }
+    #sidebarBackdrop {
+      display: none;
+      position: fixed; top:0; right:0; bottom:0; left:0;
+      background: rgba(0,0,0,.5);
+      z-index: 1035;
+    }
+    #sidebarBackdrop.show { display: block; }
+
+    #sidebarMenu .nav-link { color: rgba(255,255,255,.75); }
+    #sidebarMenu .nav-link:hover,
+    #sidebarMenu .nav-link.active { color: #ffc107; font-weight: bold; }
+    #sidebarMenu .sidebar-sublink { color: rgba(255,255,255,.6); padding-left: 2.5rem !important; font-size: 0.92rem; }
+    #sidebarMenu .sidebar-sublink:hover,
+    #sidebarMenu .sidebar-sublink.active { color: #ffc107; }
+
+    .content-wrapper { min-height: 100vh; display: flex; flex-direction: column; }
+    .topbar-mobile { display: flex; }
+
+    @media (min-width: 992px) {
+      #sidebarMenu { transform: none; }
+      #sidebarBackdrop { display: none !important; }
+      .content-wrapper { margin-left: var(--sidebar-width); }
+      .topbar-mobile { display: none; }
+    }
   </style>
 </head>
 <body>
-  <!-- Navbar -->
-  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-    <div class="container-fluid">
-    <a class="navbar-brand" href="{{ url_for('dashboard.home') }}">AluguelFácil</a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Alternar navegação">
-    <span class="navbar-toggler-icon"></span>
-    </button>
 
-    <div class="collapse navbar-collapse" id="navbarNav">
-    <ul class="navbar-nav me-auto">
-    <!-- Dashboard -->
-    <li class="nav-item">
-    <a class="nav-link {% if request.endpoint and request.endpoint.startswith('dashboard.') %}active{% endif %}"
-    href="{{ url_for('dashboard.home') }}">
-    <i class="fa-solid fa-gauge-high me-1"></i>Dashboard
-    </a>
-    </li>
+  <div id="sidebarBackdrop"></div>
 
-    <!-- Mapa Operacional -->
-    <li class="nav-item">
-    <a class="nav-link {% if request.endpoint and request.endpoint.startswith('operacional.') %}active{% endif %}"
-    href="{{ url_for('operacional.mapa') }}">
-    <i class="fa-solid fa-map me-1"></i>Operacional
-    </a>
-    </li>
-
-    <!-- Clientes -->
-    <li class="nav-item">
-    <a class="nav-link {% if request.endpoint and request.endpoint.startswith('clientes.') %}active{% endif %}"
-    href="{{ url_for('clientes.listar_clientes') }}">
-    <i class="fa-solid fa-user-group me-1"></i>Clientes
-    </a>
-    </li>
-
-    <!-- Equipamentos -->
-    <li class="nav-item">
-    <a class="nav-link {% if request.endpoint and request.endpoint.startswith('equipamentos.') %}active{% endif %}"
-    href="{{ url_for('equipamentos.listar_equipamentos') }}">
-    <i class="fa-solid fa-boxes-stacked me-1"></i>Equipamentos
-    </a>
-    </li>
-
-    <!-- Manutenção -->
-    <li class="nav-item">
-    <a class="nav-link {% if request.endpoint and request.endpoint.startswith('manutencoes.') %}active{% endif %}"
-    href="{{ url_for('manutencoes.listar_manutencoes') }}">
-    <i class="fa-solid fa-screwdriver-wrench me-1"></i>Manutenção
-    </a>
-    </li>
-
-    <!-- Entregas -->
-    <li class="nav-item">
-    <a class="nav-link {% if request.endpoint and request.endpoint.startswith('entregas.') %}active{% endif %}"
-    href="{{ url_for('entregas.listar_entregas') }}">
-    <i class="fa-solid fa-truck me-1"></i>Entregas
-    </a>
-    </li>
-
-    <!-- Filiais -->
-    <li class="nav-item">
-    <a class="nav-link {% if request.endpoint and request.endpoint.startswith('filiais.') %}active{% endif %}"
-    href="{{ url_for('filiais.listar_filiais') }}">
-    <i class="fa-solid fa-building me-1"></i>Filiais
-    </a>
-    </li>
-
-    <!-- Relatórios -->
-    <li class="nav-item">
-    <a class="nav-link {% if request.endpoint and request.endpoint.startswith('relatorios.') %}active{% endif %}"
-    href="{{ url_for('relatorios.index') }}">
-    <i class="fa-solid fa-chart-column me-1"></i>Relatórios
-    </a>
-    </li>
-
-    <!-- Orçamentos -->
-    <li class="nav-item">
-    <a class="nav-link {% if request.endpoint and request.endpoint.startswith('orcamentos.') %}active{% endif %}"
-    href="{{ url_for('orcamentos.listar_orcamentos') }}">
-    <i class="fa-solid fa-file-invoice-dollar me-1"></i>Orçamentos
-    </a>
-    </li>
-
-    <!-- CRM -->
-    <li class="nav-item dropdown">
-    <a class="nav-link dropdown-toggle
-    {% if request.endpoint and request.endpoint.startswith('crm.') %}active{% endif %}"
-    href="#" id="crmDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-    <i class="fa-solid fa-people-arrows me-1"></i>CRM
-    </a>
-    <ul class="dropdown-menu">
-    <li>
-    <a class="dropdown-item {% if request.endpoint == 'crm.pipeline' %}active{% endif %}"
-    href="{{ url_for('crm.pipeline') }}">
-    Pipeline
-    </a>
-    </li>
-    <li>
-    <a class="dropdown-item {% if request.endpoint == 'crm.tarefas' %}active{% endif %}"
-    href="{{ url_for('crm.tarefas') }}">
-    Tarefas
-    </a>
-    </li>
-    </ul>
-    </li>
-
-    <!-- Locações -->
-    <li class="nav-item dropdown">
-    <a class="nav-link dropdown-toggle
-    {% if request.endpoint and request.endpoint.startswith('locacoes.') %}active{% endif %}"
-    href="#" id="locacoesDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-    <i class="fa-solid fa-receipt me-1"></i>Locações
-    </a>
-    <ul class="dropdown-menu">
-    <li>
-    <a class="dropdown-item {% if request.endpoint == 'locacoes.listar_locacoes' %}active{% endif %}"
-    href="{{ url_for('locacoes.listar_locacoes') }}">
-    Ativas
-    </a>
-    </li>
-    <li>
-    <a class="dropdown-item {% if request.endpoint == 'locacoes.canceladas' %}active{% endif %}"
-    href="{{ url_for('locacoes.canceladas') }}">
-    Canceladas
-    </a>
-    </li>
-    </ul>
-    </li>
-
-    <!-- Financeiro -->
-    <li class="nav-item dropdown">
-    <a class="nav-link dropdown-toggle
-    {% if request.endpoint and request.endpoint.startswith('financeiro.') %}active{% endif %}"
-    href="#" id="financeiroDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-    <i class="fa-solid fa-sack-dollar me-1"></i>Financeiro
-    </a>
-    <ul class="dropdown-menu">
-    <li>
-    <a class="dropdown-item {% if request.endpoint == 'financeiro.home' %}active{% endif %}"
-    href="{{ url_for('financeiro.home') }}">
-    Visão Geral
-    </a>
-    </li>
-    <li>
-    <a class="dropdown-item {% if request.endpoint and request.endpoint.startswith('financeiro.') and 'despesa' in request.endpoint %}active{% endif %}"
-    href="{{ url_for('financeiro.listar_despesas') }}">
-    Despesas
-    </a>
-    </li>
-    <li>
-    <a class="dropdown-item {% if request.endpoint == 'financeiro.fluxo_caixa' %}active{% endif %}"
-    href="{{ url_for('financeiro.fluxo_caixa') }}">
-    Fluxo de Caixa
-    </a>
-    </li>
-    <li>
-    <a class="dropdown-item {% if request.endpoint == 'financeiro.config_multas' %}active{% endif %}"
-    href="{{ url_for('financeiro.config_multas') }}">
-    Config. Multas
-    </a>
-    </li>
-    </ul>
-    </li>
-
-    <!-- Usuários -->
-    <li class="nav-item">
-    <a class="nav-link {% if request.endpoint and request.endpoint.startswith('usuarios.') %}active{% endif %}"
-    href="{{ url_for('usuarios.listar_usuarios') }}">
-    <i class="fa-solid fa-users-gear me-1"></i>Usuários
-    </a>
-    </li>
-
-    <!-- Configurações -->
-    <li class="nav-item">
-    <a class="nav-link {% if request.endpoint and request.endpoint.startswith('configuracoes.') %}active{% endif %}"
-    href="{{ url_for('configuracoes.pagina_configuracoes') }}">
-    <i class="fa-solid fa-gear me-1"></i>Configurações
-    </a>
-    </li>
-
-    <!-- Assistente -->
-    <li class="nav-item">
-    <a class="nav-link {% if request.endpoint and request.endpoint.startswith('assistente.') %}active{% endif %}"
-    href="{{ url_for('assistente.chat') }}">
-    <i class="fa-solid fa-robot me-1"></i>Assistente
-    </a>
-    </li>
-    </ul>
-
-    <!-- Login/Logout -->
-    <ul class="navbar-nav ms-auto">
-    {% if current_user.is_authenticated %}
-    <li class="nav-item">
-    <span class="navbar-text text-light me-3">
-    Olá, {{ current_user.username or 'Usuário' }}
-    </span>
-    </li>
-    <li class="nav-item">
-    <a class="nav-link {% if request.endpoint == 'configuracoes.trocar_senha' %}active{% endif %}"
-    href="{{ url_for('configuracoes.trocar_senha') }}">
-    <i class="fa-solid fa-key me-1"></i>Trocar senha
-    </a>
-    </li>
-    <li class="nav-item">
-    <a class="nav-link" href="{{ url_for('auth.logout') }}">
-    <i class="fa-solid fa-right-from-bracket me-1"></i>Sair
-    </a>
-    </li>
-    {% else %}
-    <li class="nav-item">
-    <a class="nav-link {% if request.endpoint == 'auth.login' %}active{% endif %}"
-    href="{{ url_for('auth.login') }}">
-    <i class="fa-solid fa-right-to-bracket me-1"></i>Entrar
-    </a>
-    </li>
-    {% endif %}
-    </ul>
+  <div id="sidebarMenu" class="text-white">
+    <div class="d-flex align-items-center justify-content-between border-bottom border-secondary px-3 py-3">
+      <a class="text-white text-decoration-none fw-bold fs-5" href="{{ url_for('dashboard.home') }}">AluguelFácil</a>
+      <button type="button" class="btn btn-sm btn-outline-light d-lg-none" id="sidebarCloseBtn">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
     </div>
-    </div>
-  </nav>
 
-  <!-- Flash Messages -->
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-    <div class="container mt-3">
-    {% for category, message in messages %}
-    {% set bs_cat = 'danger' if category == 'error' else (category if category in ['success','info','warning','danger','primary','secondary','light','dark'] else 'secondary') %}
-    <div class="alert alert-{{ bs_cat }} alert-dismissible fade show" role="alert">
-    <i class="fas fa-{{ 'check-circle' if bs_cat == 'success' else 'triangle-exclamation' if bs_cat in ['warning','danger'] else 'info-circle' }} me-1"></i>
-    {{ message }}
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
-    </div>
-    {% endfor %}
-    </div>
-    {% endif %}
-  {% endwith %}
+    <ul class="nav flex-column px-2 pt-2">
+      <li class="nav-item">
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('dashboard.') %}active{% endif %}" href="{{ url_for('dashboard.home') }}">
+          <i class="fa-solid fa-gauge-high me-2"></i>Dashboard
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('operacional.') %}active{% endif %}" href="{{ url_for('operacional.mapa') }}">
+          <i class="fa-solid fa-map me-2"></i>Operacional
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('clientes.') %}active{% endif %}" href="{{ url_for('clientes.listar_clientes') }}">
+          <i class="fa-solid fa-user-group me-2"></i>Clientes
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('equipamentos.') %}active{% endif %}" href="{{ url_for('equipamentos.listar_equipamentos') }}">
+          <i class="fa-solid fa-boxes-stacked me-2"></i>Equipamentos
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('manutencoes.') %}active{% endif %}" href="{{ url_for('manutencoes.listar_manutencoes') }}">
+          <i class="fa-solid fa-screwdriver-wrench me-2"></i>Manutenção
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('entregas.') %}active{% endif %}" href="{{ url_for('entregas.listar_entregas') }}">
+          <i class="fa-solid fa-truck me-2"></i>Entregas
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('filiais.') %}active{% endif %}" href="{{ url_for('filiais.listar_filiais') }}">
+          <i class="fa-solid fa-building me-2"></i>Filiais
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('relatorios.') %}active{% endif %}" href="{{ url_for('relatorios.index') }}">
+          <i class="fa-solid fa-chart-column me-2"></i>Relatórios
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('orcamentos.') %}active{% endif %}" href="{{ url_for('orcamentos.listar_orcamentos') }}">
+          <i class="fa-solid fa-file-invoice-dollar me-2"></i>Orçamentos
+        </a>
+      </li>
 
-  <!-- Conteúdo principal -->
-  <div class="container mt-4">
-    {% block content %}{% endblock %}
+      <li class="nav-item">
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('crm.') %}active{% endif %}" href="#crmSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="{% if request.endpoint and request.endpoint.startswith('crm.') %}true{% else %}false{% endif %}" aria-controls="crmSubmenu">
+          <i class="fa-solid fa-people-arrows me-2"></i>CRM
+          <i class="fa-solid fa-chevron-down float-end small mt-1"></i>
+        </a>
+        <div class="collapse {% if request.endpoint and request.endpoint.startswith('crm.') %}show{% endif %}" id="crmSubmenu">
+          <ul class="nav flex-column">
+            <li class="nav-item"><a class="nav-link sidebar-sublink {% if request.endpoint == 'crm.pipeline' %}active{% endif %}" href="{{ url_for('crm.pipeline') }}">Pipeline</a></li>
+            <li class="nav-item"><a class="nav-link sidebar-sublink {% if request.endpoint == 'crm.tarefas' %}active{% endif %}" href="{{ url_for('crm.tarefas') }}">Tarefas</a></li>
+          </ul>
+        </div>
+      </li>
+
+      <li class="nav-item">
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('locacoes.') %}active{% endif %}" href="#locacoesSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="{% if request.endpoint and request.endpoint.startswith('locacoes.') %}true{% else %}false{% endif %}" aria-controls="locacoesSubmenu">
+          <i class="fa-solid fa-receipt me-2"></i>Locações
+          <i class="fa-solid fa-chevron-down float-end small mt-1"></i>
+        </a>
+        <div class="collapse {% if request.endpoint and request.endpoint.startswith('locacoes.') %}show{% endif %}" id="locacoesSubmenu">
+          <ul class="nav flex-column">
+            <li class="nav-item"><a class="nav-link sidebar-sublink {% if request.endpoint == 'locacoes.listar_locacoes' %}active{% endif %}" href="{{ url_for('locacoes.listar_locacoes') }}">Ativas</a></li>
+            <li class="nav-item"><a class="nav-link sidebar-sublink {% if request.endpoint == 'locacoes.canceladas' %}active{% endif %}" href="{{ url_for('locacoes.canceladas') }}">Canceladas</a></li>
+          </ul>
+        </div>
+      </li>
+
+      <li class="nav-item">
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('financeiro.') %}active{% endif %}" href="#financeiroSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="{% if request.endpoint and request.endpoint.startswith('financeiro.') %}true{% else %}false{% endif %}" aria-controls="financeiroSubmenu">
+          <i class="fa-solid fa-sack-dollar me-2"></i>Financeiro
+          <i class="fa-solid fa-chevron-down float-end small mt-1"></i>
+        </a>
+        <div class="collapse {% if request.endpoint and request.endpoint.startswith('financeiro.') %}show{% endif %}" id="financeiroSubmenu">
+          <ul class="nav flex-column">
+            <li class="nav-item"><a class="nav-link sidebar-sublink {% if request.endpoint == 'financeiro.home' %}active{% endif %}" href="{{ url_for('financeiro.home') }}">Visão Geral</a></li>
+            <li class="nav-item"><a class="nav-link sidebar-sublink {% if request.endpoint and request.endpoint.startswith('financeiro.') and 'despesa' in request.endpoint %}active{% endif %}" href="{{ url_for('financeiro.listar_despesas') }}">Despesas</a></li>
+            <li class="nav-item"><a class="nav-link sidebar-sublink {% if request.endpoint == 'financeiro.fluxo_caixa' %}active{% endif %}" href="{{ url_for('financeiro.fluxo_caixa') }}">Fluxo de Caixa</a></li>
+            <li class="nav-item"><a class="nav-link sidebar-sublink {% if request.endpoint == 'financeiro.config_multas' %}active{% endif %}" href="{{ url_for('financeiro.config_multas') }}">Config. Multas</a></li>
+          </ul>
+        </div>
+      </li>
+
+      <li class="nav-item">
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('usuarios.') %}active{% endif %}" href="{{ url_for('usuarios.listar_usuarios') }}">
+          <i class="fa-solid fa-users-gear me-2"></i>Usuários
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('configuracoes.') %}active{% endif %}" href="{{ url_for('configuracoes.pagina_configuracoes') }}">
+          <i class="fa-solid fa-gear me-2"></i>Configurações
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('assistente.') %}active{% endif %}" href="{{ url_for('assistente.chat') }}">
+          <i class="fa-solid fa-robot me-2"></i>Assistente
+        </a>
+      </li>
+    </ul>
+
+    <hr class="text-secondary mx-2">
+    <ul class="nav flex-column px-2 pb-3 mt-auto">
+      {% if current_user.is_authenticated %}
+      <li class="nav-item px-2 py-1">
+        <span class="text-light small">Olá, {{ current_user.username or 'Usuário' }}</span>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link {% if request.endpoint == 'configuracoes.trocar_senha' %}active{% endif %}" href="{{ url_for('configuracoes.trocar_senha') }}">
+          <i class="fa-solid fa-key me-2"></i>Trocar senha
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('auth.logout') }}">
+          <i class="fa-solid fa-right-from-bracket me-2"></i>Sair
+        </a>
+      </li>
+      {% else %}
+      <li class="nav-item">
+        <a class="nav-link {% if request.endpoint == 'auth.login' %}active{% endif %}" href="{{ url_for('auth.login') }}">
+          <i class="fa-solid fa-right-to-bracket me-2"></i>Entrar
+        </a>
+      </li>
+      {% endif %}
+    </ul>
   </div>
 
-  <!-- Footer -->
-  <footer>
-    <div class="container">
-    <p>&copy; 2025 AluguelFácil. Todos os direitos reservados.</p>
+  <div class="content-wrapper">
+    <div class="topbar-mobile navbar navbar-dark bg-dark align-items-center px-3 py-2">
+      <button class="btn btn-outline-light btn-sm" type="button" id="sidebarOpenBtn">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+      <span class="navbar-brand text-white ms-3 mb-0">AluguelFácil</span>
     </div>
-  </footer>
 
-  <!-- Bootstrap JS -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div class="container mt-3">
+        {% for category, message in messages %}
+        {% set bs_cat = 'danger' if category == 'error' else (category if category in ['success','info','warning','danger','primary','secondary','light','dark'] else 'secondary') %}
+        <div class="alert alert-{{ bs_cat }} alert-dismissible fade show" role="alert">
+          <i class="fas fa-{{ 'check-circle' if bs_cat == 'success' else 'triangle-exclamation' if bs_cat in ['warning','danger'] else 'info-circle' }} me-1"></i>
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    {% endwith %}
+
+    <div class="container mt-4">
+      {% block content %}{% endblock %}
+    </div>
+
+    <footer class="mt-auto">
+      <div class="container">
+        <p>&copy; 2025 AluguelFácil. Todos os direitos reservados.</p>
+      </div>
+    </footer>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <!-- Mensagens de validação de formulário em português (todos os forms do sistema) -->
   <script src="{{ url_for('static', filename='js/validacao-formularios.js') }}?v=1"></script>
+  <script>
+    (function () {
+      var sidebar = document.getElementById('sidebarMenu');
+      var backdrop = document.getElementById('sidebarBackdrop');
+      var openBtn = document.getElementById('sidebarOpenBtn');
+      var closeBtn = document.getElementById('sidebarCloseBtn');
+      function openSidebar() { sidebar.classList.add('show'); backdrop.classList.add('show'); }
+      function closeSidebar() { sidebar.classList.remove('show'); backdrop.classList.remove('show'); }
+      if (openBtn) openBtn.addEventListener('click', openSidebar);
+      if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
+      if (backdrop) backdrop.addEventListener('click', closeSidebar);
+    })();
+  </script>
   {% block extra_scripts %}{% endblock %}
 </body>
 </html>
