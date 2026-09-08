@@ -7,6 +7,9 @@ from werkzeug.security import check_password_hash
 from database import get_db_connection
 from models.user import User
 from permissions import landing_url
+from text_utils import slugify
+from validators import validar_forca_senha
+from werkzeug.security import generate_password_hash
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
@@ -174,3 +177,104 @@ def resetar_senha(token):
         return redirect(url_for("auth.login"))
 
     return render_template("resetar_senha_form.html", token=token)
+
+
+# ======================
+# Cadastro publico de empresa (self-signup) -- qualquer visitante pode criar
+# a propria empresa + usuario admin, sem aprovacao manual. Rate limit por IP
+# pra segurar spam/abuso (3 tentativas por hora, mesma logica do rate limit
+# de recuperar_senha).
+# ======================
+def _ip_do_cliente():
+    xff = request.headers.get("X-Forwarded-For", "")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.remote_addr or "desconhecido"
+
+
+def _gerar_slug_unico_empresa(cur, nome):
+    cur.execute("SELECT slug FROM companies WHERE slug IS NOT NULL")
+    usados = {r["slug"] for r in cur.fetchall()}
+    base = slugify(nome)
+    slug = base
+    contador = 2
+    while slug in usados:
+        slug = f"{base}-{contador}"
+        contador += 1
+    return slug
+
+
+@auth_bp.route("/cadastro", methods=["GET", "POST"])
+def cadastro_publico():
+    if request.method == "POST":
+        ip = _ip_do_cliente()
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+        try:
+            cur.execute(
+                "SELECT COUNT(*) AS total FROM signup_attempts WHERE ip=%s AND criado_em > NOW() - INTERVAL '1 hour'",
+                (ip,),
+            )
+            tentativas = cur.fetchone()["total"]
+            if tentativas >= 3:
+                cur.close()
+                conn.close()
+                flash("Muitas tentativas de cadastro. Tente novamente daqui a 1 hora.", "danger")
+                return render_template("cadastro.html")
+
+            cur.execute("INSERT INTO signup_attempts (ip) VALUES (%s)", (ip,))
+            conn.commit()
+
+            nome_empresa = (request.form.get("nome_empresa") or "").strip()
+            username = (request.form.get("username") or "").strip()
+            email = (request.form.get("email") or "").strip()
+            senha = request.form.get("senha") or ""
+
+            if not nome_empresa or not username or not email or not senha:
+                cur.close()
+                conn.close()
+                flash("Preencha nome da empresa, usuário, e-mail e senha.", "warning")
+                return render_template("cadastro.html")
+
+            senha_valida, erro_senha = validar_forca_senha(senha, [username, email])
+            if not senha_valida:
+                cur.close()
+                conn.close()
+                flash(erro_senha, "warning")
+                return render_template("cadastro.html")
+
+            cur.execute("SELECT id FROM usuarios WHERE username=%s OR email=%s", (username, email))
+            if cur.fetchone():
+                cur.close()
+                conn.close()
+                flash("Já existe um usuário com esse username ou e-mail.", "warning")
+                return render_template("cadastro.html")
+
+            slug = _gerar_slug_unico_empresa(cur, nome_empresa)
+            cur.execute("""
+                INSERT INTO companies (nome, slug, plano, status)
+                VALUES (%s, %s, 'basico', 'ativo')
+                RETURNING id
+            """, (nome_empresa, slug))
+            company_id = cur.fetchone()["id"]
+
+            cur.execute("INSERT INTO branches (company_id, nome) VALUES (%s, 'Matriz')", (company_id,))
+
+            cur.execute("""
+                INSERT INTO usuarios (username, email, senha, role, company_id, is_admin)
+                VALUES (%s, %s, %s, 'admin_locadora', %s, FALSE)
+            """, (username, email, generate_password_hash(senha), company_id))
+
+            conn.commit()
+            flash("Conta criada com sucesso! Faça login para começar.", "success")
+            return redirect(url_for("auth.login"))
+        except Exception as e:
+            conn.rollback()
+            flash(f"Erro ao criar conta: {e}", "danger")
+            return render_template("cadastro.html")
+        finally:
+            cur.close()
+            conn.close()
+
+    return render_template("cadastro.html")
