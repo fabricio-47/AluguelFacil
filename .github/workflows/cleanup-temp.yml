@@ -1,0 +1,22 @@
+name: Ativar admin plataforma (temporario)
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Instalar cliente PostgreSQL 18
+        run: |
+          sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-18
+      - name: Ativar eh_admin_plataforma para fabricio
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_BACKUP }}
+        run: |
+          PSQL="/usr/lib/postgresql/18/bin/psql"
+          $PSQL "$DATABASE_URL" -c "UPDATE usuarios SET eh_admin_plataforma=TRUE WHERE email='mundocelularrj@gmail.com';"
+          $PSQL "$DATABASE_URL" -c "SELECT username, email, eh_admin_plataforma FROM usuarios WHERE email='mundocelularrj@gmail.com';"
