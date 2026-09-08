@@ -234,7 +234,13 @@
     function atualizarNomeArquivo(input, spanId) {
       var span = document.getElementById(spanId);
       if (!span) return;
-      span.textContent = (input.files && input.files.length > 0) ? input.files[0].name : "Nenhum arquivo escolhido";
+      if (!input.files || input.files.length === 0) {
+        span.textContent = "Nenhum arquivo escolhido";
+      } else if (input.files.length === 1) {
+        span.textContent = input.files[0].name;
+      } else {
+        span.textContent = input.files.length + " arquivos selecionados";
+      }
     }
   </script>
   <script>

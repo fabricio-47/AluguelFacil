@@ -64,6 +64,8 @@ def _campos_formulario(form):
         "combustivel": (form.get("combustivel") or "").strip() or None,
         "cambio": (form.get("cambio") or "").strip() or None,
         "endereco_completo": (form.get("endereco_completo") or "").strip() or None,
+        "bairro": (form.get("bairro") or "").strip() or None,
+        "cidade": (form.get("cidade") or "").strip() or None,
         "metro_quadrado": form.get("metro_quadrado") or None,
         "quartos": form.get("quartos") or None,
         "banheiros": form.get("banheiros") or None,
@@ -127,13 +129,13 @@ def listar_equipamentos():
                     numero_serie, ano, descricao, valor_compra, valor_diaria, valor_semanal,
                     valor_quinzenal, valor_mensal, valor_hora, caucao, status, quantidade_disponivel,
                     placa, chassi, renavam, quilometragem, combustivel, cambio,
-                    endereco_completo, metro_quadrado, quartos, banheiros, tipo_imovel, iptu, condominio
+                    endereco_completo, bairro, cidade, metro_quadrado, quartos, banheiros, tipo_imovel, iptu, condominio
                 ) VALUES (%(company_id)s,%(branch_id)s,%(categoria_id)s,%(codigo_interno)s,%(sku)s,%(codigo_barras)s,%(nome)s,%(marca)s,
                     %(modelo)s,%(numero_serie)s,%(ano)s,%(descricao)s,%(valor_compra)s,%(valor_diaria)s,
                     %(valor_semanal)s,%(valor_quinzenal)s,%(valor_mensal)s,%(valor_hora)s,%(caucao)s,
                     %(status)s,%(quantidade_disponivel)s,
                     %(placa)s,%(chassi)s,%(renavam)s,%(quilometragem)s,%(combustivel)s,%(cambio)s,
-                    %(endereco_completo)s,%(metro_quadrado)s,%(quartos)s,%(banheiros)s,%(tipo_imovel)s,%(iptu)s,%(condominio)s)
+                    %(endereco_completo)s,%(bairro)s,%(cidade)s,%(metro_quadrado)s,%(quartos)s,%(banheiros)s,%(tipo_imovel)s,%(iptu)s,%(condominio)s)
                 RETURNING id
             """, campos)
             equipamento_id = cur.fetchone()["id"]
@@ -218,7 +220,8 @@ def editar_equipamento(id):
                         status=%(status)s, quantidade_disponivel=%(quantidade_disponivel)s,
                         placa=%(placa)s, chassi=%(chassi)s, renavam=%(renavam)s,
                         quilometragem=%(quilometragem)s, combustivel=%(combustivel)s, cambio=%(cambio)s,
-                        endereco_completo=%(endereco_completo)s, metro_quadrado=%(metro_quadrado)s,
+                        endereco_completo=%(endereco_completo)s, bairro=%(bairro)s, cidade=%(cidade)s,
+                        metro_quadrado=%(metro_quadrado)s,
                         quartos=%(quartos)s, banheiros=%(banheiros)s, tipo_imovel=%(tipo_imovel)s,
                         iptu=%(iptu)s, condominio=%(condominio)s
                     WHERE id=%(id)s AND company_id=%(company_id)s
@@ -255,7 +258,7 @@ def editar_equipamento(id):
                ei.valor_compra, ei.valor_diaria, ei.valor_semanal, ei.valor_quinzenal, ei.valor_mensal, ei.valor_hora,
                ei.caucao, ei.status, ei.branch_id, b.nome AS filial_nome,
                ei.placa, ei.chassi, ei.renavam, ei.quilometragem, ei.combustivel, ei.cambio,
-               ei.endereco_completo, ei.metro_quadrado, ei.quartos, ei.banheiros, ei.tipo_imovel, ei.iptu, ei.condominio
+               ei.endereco_completo, ei.bairro, ei.cidade, ei.metro_quadrado, ei.quartos, ei.banheiros, ei.tipo_imovel, ei.iptu, ei.condominio
         FROM equipment_items ei
         LEFT JOIN branches b ON b.id = ei.branch_id
         WHERE ei.id=%s AND ei.company_id=%s
@@ -480,6 +483,19 @@ def equipamento_imagens(equipamento_id):
             flash("Nenhuma imagem selecionada.", "warning")
             return redirect(request.url)
 
+        cur.execute("SELECT COUNT(*) AS total FROM equipment_item_imagens WHERE equipment_item_id=%s", (equipamento_id,))
+        ja_tem = cur.fetchone()["total"]
+        LIMITE_FOTOS = 20
+        vagas = LIMITE_FOTOS - ja_tem
+        if vagas <= 0:
+            cur.close()
+            conn.close()
+            flash(f"Esse item já tem o máximo de {LIMITE_FOTOS} fotos. Exclua alguma antes de enviar mais.", "warning")
+            return redirect(request.url)
+        if len(files) > vagas:
+            files = files[:vagas]
+            flash(f"Só cabiam mais {vagas} foto(s) (limite de {LIMITE_FOTOS}) — as primeiras {vagas} foram enviadas.", "warning")
+
         pasta = os.path.join(current_app.config["UPLOAD_FOLDER"], "motos")
         os.makedirs(pasta, exist_ok=True)
 
@@ -702,3 +718,109 @@ def qr_page(id):
     finally:
         cur.close()
         conn.close()
+
+
+# ======================
+# Categorias de equipamento (nome + categoria pai opcional, pra separar
+# Equipamentos genericos / Veiculos / Imoveis visualmente)
+# ======================
+@equipamentos_bp.route("/categorias", methods=["GET", "POST"])
+@login_required
+@requer_permissao(VER_EQUIPAMENTOS)
+def listar_categorias():
+    if request.method == "POST" and not tem_permissao(GERENCIAR_EQUIPAMENTOS):
+        flash("Você não tem permissão para cadastrar categorias.", "danger")
+        return redirect(url_for("equipamentos.listar_categorias"))
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    if request.method == "POST":
+        nome = (request.form.get("nome") or "").strip()
+        categoria_pai_id = request.form.get("categoria_pai_id", type=int) or None
+        if not nome:
+            flash("Nome da categoria é obrigatório.", "warning")
+        else:
+            try:
+                cur.execute(
+                    "INSERT INTO equipment_categories (company_id, nome, categoria_pai_id) VALUES (%s, %s, %s)",
+                    (current_user.company_id, nome, categoria_pai_id),
+                )
+                conn.commit()
+                flash("Categoria cadastrada com sucesso!", "success")
+            except Exception as e:
+                conn.rollback()
+                flash(f"Erro ao cadastrar categoria: {e}", "danger")
+        cur.close()
+        conn.close()
+        return redirect(url_for("equipamentos.listar_categorias"))
+
+    cur.execute("""
+        SELECT c.id, c.nome, c.categoria_pai_id, pai.nome AS categoria_pai_nome,
+               (SELECT COUNT(*) FROM equipment_items ei WHERE ei.categoria_id = c.id) AS itens_usando
+        FROM equipment_categories c
+        LEFT JOIN equipment_categories pai ON pai.id = c.categoria_pai_id
+        WHERE c.company_id = %s
+        ORDER BY c.nome
+    """, (current_user.company_id,))
+    categorias = cur.fetchall()
+    cur.close()
+    conn.close()
+    return render_template("equipamento_categorias.html", categorias=categorias)
+
+
+@equipamentos_bp.route("/categorias/<int:id>/editar", methods=["POST"])
+@login_required
+@requer_permissao(GERENCIAR_EQUIPAMENTOS)
+def editar_categoria(id):
+    nome = (request.form.get("nome") or "").strip()
+    categoria_pai_id = request.form.get("categoria_pai_id", type=int) or None
+    if categoria_pai_id == id:
+        flash("Uma categoria não pode ser pai dela mesma.", "warning")
+        return redirect(url_for("equipamentos.listar_categorias"))
+    if not nome:
+        flash("Nome da categoria é obrigatório.", "warning")
+        return redirect(url_for("equipamentos.listar_categorias"))
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "UPDATE equipment_categories SET nome=%s, categoria_pai_id=%s WHERE id=%s AND company_id=%s",
+            (nome, categoria_pai_id, id, current_user.company_id),
+        )
+        conn.commit()
+        flash("Categoria atualizada!", "success")
+    except Exception as e:
+        conn.rollback()
+        flash(f"Erro ao atualizar categoria: {e}", "danger")
+    finally:
+        cur.close()
+        conn.close()
+    return redirect(url_for("equipamentos.listar_categorias"))
+
+
+@equipamentos_bp.route("/categorias/<int:id>/excluir", methods=["POST"])
+@login_required
+@requer_permissao(GERENCIAR_EQUIPAMENTOS)
+def excluir_categoria(id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM equipment_categories WHERE id=%s AND company_id=%s", (id, current_user.company_id))
+        if cur.rowcount == 0:
+            conn.rollback()
+            flash("Categoria não encontrada.", "warning")
+        else:
+            conn.commit()
+            flash("Categoria excluída.", "info")
+    except psycopg2.errors.ForeignKeyViolation:
+        conn.rollback()
+        flash("Não é possível excluir: existem equipamentos ou subcategorias usando essa categoria.", "danger")
+    except Exception as e:
+        conn.rollback()
+        flash(f"Erro ao excluir categoria: {e}", "danger")
+    finally:
+        cur.close()
+        conn.close()
+    return redirect(url_for("equipamentos.listar_categorias"))

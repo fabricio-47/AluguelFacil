@@ -3,6 +3,9 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
   <h2>Equipamentos</h2>
+  <a href="{{ url_for('equipamentos.listar_categorias') }}" class="btn btn-outline-dark btn-sm">
+    <i class="fa-solid fa-tags me-1"></i> Categorias
+  </a>
 </div>
 
 <div class="card mb-4">
@@ -68,7 +71,12 @@
         </div>
         <div class="col-md-3">
           <label class="form-label">Foto</label>
-          <input type="file" name="foto" class="form-control" accept=".jpg,.jpeg,.png">
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <label for="foto_equip_novo" class="btn btn-outline-secondary btn-sm mb-0">Escolher arquivo</label>
+            <span id="foto_equip_novo_nome" class="text-muted small">Nenhum arquivo escolhido</span>
+          </div>
+          <input type="file" class="d-none" id="foto_equip_novo" name="foto" accept=".jpg,.jpeg,.png"
+                 onchange="atualizarNomeArquivo(this, 'foto_equip_novo_nome')">
         </div>
 
         <div class="col-12"><hr><small class="text-muted">Dados do veículo (opcional — só preencha se for um veículo)</small></div>
@@ -108,9 +116,17 @@
         </div>
 
         <div class="col-12"><hr><small class="text-muted">Dados do imóvel (opcional — só preencha se for um imóvel)</small></div>
-        <div class="col-md-6">
+        <div class="col-md-4">
           <label class="form-label">Endereço completo</label>
           <input type="text" name="endereco_completo" class="form-control">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Bairro</label>
+          <input type="text" name="bairro" class="form-control">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Cidade</label>
+          <input type="text" name="cidade" class="form-control">
         </div>
         <div class="col-md-2">
           <label class="form-label">Área (m²)</label>

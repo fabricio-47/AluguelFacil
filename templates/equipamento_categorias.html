@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Categorias de Equipamento{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>Categorias</h2>
+  <a href="{{ url_for('equipamentos.listar_equipamentos') }}" class="btn btn-outline-secondary btn-sm">Voltar</a>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header bg-success text-white">
+    <i class="fa-solid fa-tag me-1"></i> Nova Categoria
+  </div>
+  <div class="card-body">
+    <form method="post" class="row g-2 align-items-end">
+      <div class="col-md-5">
+        <label class="form-label">Nome *</label>
+        <input type="text" name="nome" class="form-control" required placeholder="Ex: Carros, Apartamentos, Motos">
+      </div>
+      <div class="col-md-5">
+        <label class="form-label">Categoria pai (opcional)</label>
+        <select name="categoria_pai_id" class="form-select">
+          <option value="">Nenhuma (categoria principal)</option>
+          {% for c in categorias %}
+          <option value="{{ c.id }}">{{ c.nome }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-primary w-100">Adicionar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header bg-dark text-white">
+    <i class="fa-solid fa-list me-1"></i> Categorias cadastradas
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-striped mb-0 align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Nome</th>
+            <th>Categoria pai</th>
+            <th>Itens usando</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in categorias %}
+          <tr>
+            <form method="post" action="{{ url_for('equipamentos.editar_categoria', id=c.id) }}" class="d-none" id="form-editar-{{ c.id }}"></form>
+            <td>
+              <input type="text" name="nome" form="form-editar-{{ c.id }}" class="form-control form-control-sm" value="{{ c.nome }}" required>
+            </td>
+            <td>
+              <select name="categoria_pai_id" form="form-editar-{{ c.id }}" class="form-select form-select-sm">
+                <option value="">Nenhuma</option>
+                {% for c2 in categorias if c2.id != c.id %}
+                <option value="{{ c2.id }}" {% if c2.id == c.categoria_pai_id %}selected{% endif %}>{{ c2.nome }}</option>
+                {% endfor %}
+              </select>
+            </td>
+            <td>{{ c.itens_usando }}</td>
+            <td>
+              <div class="d-flex gap-1">
+                <button type="submit" form="form-editar-{{ c.id }}" class="btn btn-sm btn-outline-primary">Salvar</button>
+                <form method="post" action="{{ url_for('equipamentos.excluir_categoria', id=c.id) }}" onsubmit="return confirm('Excluir esta categoria?');">
+                  <button type="submit" class="btn btn-sm btn-outline-danger" {% if c.itens_usando > 0 %}disabled title="Tem itens usando essa categoria"{% endif %}>Excluir</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" class="text-center text-muted">Nenhuma categoria cadastrada.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

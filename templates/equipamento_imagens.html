@@ -31,8 +31,13 @@
     <form method="POST" enctype="multipart/form-data">
       <div class="row g-3 align-items-center">
         <div class="col-md-8">
-          <input type="file" name="imagens" class="form-control" accept="image/*" required>
-          <small class="text-muted">Formatos suportados: JPG, JPEG, PNG. Tamanho razoável recomendado.</small>
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <label for="imagens_equip" class="btn btn-outline-secondary btn-sm mb-0">Escolher arquivos</label>
+            <span id="imagens_equip_nome" class="text-muted small">Nenhum arquivo escolhido</span>
+          </div>
+          <input type="file" class="d-none" id="imagens_equip" name="imagens" accept="image/*" multiple required
+                 onchange="atualizarNomeArquivo(this, 'imagens_equip_nome')">
+          <small class="text-muted">Formatos suportados: JPG, JPEG, PNG. Pode selecionar vários de uma vez — máximo de 20 fotos por item.</small>
         </div>
         <div class="col-md-4">
           <button class="btn btn-success w-100" type="submit">
