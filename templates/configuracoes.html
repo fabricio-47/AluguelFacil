@@ -98,4 +98,44 @@
     </small>
   </div>
 </div>
+<div class="card shadow-sm mt-4">
+  <div class="card-header bg-dark text-white">
+    <i class="fa-solid fa-cubes me-1"></i> Módulos contratados
+  </div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Módulo</th>
+            <th>Preço</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in modulos_contratados %}
+          <tr>
+            <td>{{ m.nome }}</td>
+            <td>R$ {{ "%.2f"|format(m.preco) }}/mês</td>
+            <td>
+              {% if m.status == 'ativo' %}
+                <span class="badge bg-success">Ativo</span>
+              {% elif m.status == 'trial' %}
+                <span class="badge bg-warning text-dark">Teste grátis{% if m.trial_termina_em %} até {{ m.trial_termina_em.strftime('%d/%m/%Y') }}{% endif %}</span>
+              {% elif m.status == 'bloqueado' %}
+                <span class="badge bg-danger">Bloqueado</span>
+              {% else %}
+                <span class="badge bg-light text-dark border">Não contratado</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <small class="text-muted d-block mt-2">
+      Quer contratar ou liberar um módulo que ainda não tem? Fale com o suporte.
+    </small>
+  </div>
+</div>
 {% endblock %}

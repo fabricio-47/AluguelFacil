@@ -104,6 +104,7 @@
                   <form method="post" action="{{ url_for('admin_plataforma.confirmar_pagamento_empresa', id=e.id) }}">
                     <button type="submit" class="btn btn-sm btn-outline-success">Confirmar Pagamento</button>
                   </form>
+                  <a href="{{ url_for('admin_plataforma.empresa_modulos', id=e.id) }}" class="btn btn-sm btn-outline-dark">Módulos</a>
                 </div>
               </div>
             </td>

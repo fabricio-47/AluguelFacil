@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Módulos — {{ empresa.nome }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>Módulos — {{ empresa.nome }}</h2>
+  <a href="{{ url_for('admin_plataforma.dashboard') }}" class="btn btn-outline-secondary btn-sm">Voltar</a>
+</div>
+
+<div class="alert alert-info">
+  Ativação/bloqueio manual — ainda não tem cobrança automática por cartão. Combine o pagamento por fora (Pix, boleto avulso)
+  e ative aqui depois de confirmado.
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-striped mb-0 align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Módulo</th>
+            <th>Preço</th>
+            <th>Status</th>
+            <th>Detalhe</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in modulos %}
+          <tr>
+            <td>{{ m.nome }}</td>
+            <td>R$ {{ "%.2f"|format(m.preco) }}/mês</td>
+            <td>
+              {% if m.status == 'ativo' %}
+                <span class="badge bg-success">Ativo</span>
+              {% elif m.status == 'trial' %}
+                <span class="badge bg-warning text-dark">Teste grátis</span>
+              {% elif m.status == 'bloqueado' %}
+                <span class="badge bg-danger">Bloqueado</span>
+              {% elif m.status == 'cancelado' %}
+                <span class="badge bg-secondary">Cancelado</span>
+              {% else %}
+                <span class="badge bg-light text-dark border">Não contratado</span>
+              {% endif %}
+            </td>
+            <td class="small text-muted">
+              {% if m.status == 'trial' and m.trial_termina_em %}
+                Termina em {{ m.trial_termina_em.strftime('%d/%m/%Y') }}
+              {% elif m.ativado_em %}
+                Desde {{ m.ativado_em.strftime('%d/%m/%Y') }}
+              {% endif %}
+            </td>
+            <td>
+              <div class="d-flex gap-1">
+                <form method="post" action="{{ url_for('admin_plataforma.ativar_modulo_empresa', id=empresa.id, slug=m.slug) }}">
+                  <button type="submit" class="btn btn-sm btn-success" {% if m.status == 'ativo' %}disabled{% endif %}>Ativar</button>
+                </form>
+                <form method="post" action="{{ url_for('admin_plataforma.trial_modulo_empresa', id=empresa.id, slug=m.slug) }}">
+                  <button type="submit" class="btn btn-sm btn-warning">Trial 7d</button>
+                </form>
+                <form method="post" action="{{ url_for('admin_plataforma.bloquear_modulo_empresa', id=empresa.id, slug=m.slug) }}">
+                  <button type="submit" class="btn btn-sm btn-outline-danger" {% if m.status in ('bloqueado', 'nao_contratado') %}disabled{% endif %}>Bloquear</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

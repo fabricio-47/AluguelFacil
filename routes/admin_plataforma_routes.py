@@ -10,6 +10,7 @@ from permissions import requer_admin_plataforma
 from planos import PRECO_PLANO
 from text_utils import slugify
 from validators import validar_forca_senha
+from modulos import MODULOS
 
 admin_plataforma_bp = Blueprint("admin_plataforma", __name__, url_prefix="/admin-plataforma")
 
@@ -259,3 +260,123 @@ def confirmar_pagamento_empresa(id):
         cur.close()
         conn.close()
     return redirect(url_for("admin_plataforma.dashboard"))
+
+
+# ======================
+# Licenciamento por modulo (Fase 4) -- gestao manual, sem cobranca automatica ainda
+# ======================
+@admin_plataforma_bp.route("/empresas/<int:id>/modulos")
+@login_required
+@requer_admin_plataforma
+def empresa_modulos(id):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("SELECT id, nome FROM companies WHERE id=%s", (id,))
+        empresa = cur.fetchone()
+        if not empresa:
+            flash("Empresa não encontrada.", "warning")
+            return redirect(url_for("admin_plataforma.dashboard"))
+
+        cur.execute("SELECT modulo, status, trial_termina_em, ativado_em FROM company_modulos WHERE company_id=%s", (id,))
+        por_modulo = {row["modulo"]: row for row in cur.fetchall()}
+
+        modulos_view = []
+        for slug, info in MODULOS.items():
+            linha = por_modulo.get(slug)
+            modulos_view.append({
+                "slug": slug,
+                "nome": info["nome"],
+                "preco": info["preco"],
+                "status": linha["status"] if linha else "nao_contratado",
+                "trial_termina_em": linha["trial_termina_em"] if linha else None,
+                "ativado_em": linha["ativado_em"] if linha else None,
+            })
+
+        return render_template("admin_plataforma_modulos.html", empresa=empresa, modulos=modulos_view)
+    finally:
+        cur.close()
+        conn.close()
+
+
+@admin_plataforma_bp.route("/empresas/<int:id>/modulos/<slug>/ativar", methods=["POST"])
+@login_required
+@requer_admin_plataforma
+def ativar_modulo_empresa(id, slug):
+    if slug not in MODULOS:
+        flash("Módulo inválido.", "warning")
+        return redirect(url_for("admin_plataforma.empresa_modulos", id=id))
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            INSERT INTO company_modulos (company_id, modulo, status, trial_termina_em)
+            VALUES (%s, %s, 'ativo', NULL)
+            ON CONFLICT (company_id, modulo) DO UPDATE SET status='ativo', trial_termina_em=NULL
+        """, (id, slug))
+        conn.commit()
+        flash(f"Módulo \"{MODULOS[slug]['nome']}\" ativado manualmente (pagamento combinado por fora, sem cobrança automática ainda).", "success")
+    except Exception as e:
+        conn.rollback()
+        flash(f"Erro ao ativar módulo: {e}", "danger")
+    finally:
+        cur.close()
+        conn.close()
+    return redirect(url_for("admin_plataforma.empresa_modulos", id=id))
+
+
+@admin_plataforma_bp.route("/empresas/<int:id>/modulos/<slug>/trial", methods=["POST"])
+@login_required
+@requer_admin_plataforma
+def trial_modulo_empresa(id, slug):
+    if slug not in MODULOS:
+        flash("Módulo inválido.", "warning")
+        return redirect(url_for("admin_plataforma.empresa_modulos", id=id))
+
+    trial_termina_em = dt.datetime.utcnow() + dt.timedelta(days=7)
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            INSERT INTO company_modulos (company_id, modulo, status, trial_termina_em)
+            VALUES (%s, %s, 'trial', %s)
+            ON CONFLICT (company_id, modulo) DO UPDATE SET status='trial', trial_termina_em=%s
+        """, (id, slug, trial_termina_em, trial_termina_em))
+        conn.commit()
+        flash(f"Teste grátis de 7 dias concedido para \"{MODULOS[slug]['nome']}\" (termina em {trial_termina_em.strftime('%d/%m/%Y')}).", "success")
+    except Exception as e:
+        conn.rollback()
+        flash(f"Erro ao conceder teste grátis: {e}", "danger")
+    finally:
+        cur.close()
+        conn.close()
+    return redirect(url_for("admin_plataforma.empresa_modulos", id=id))
+
+
+@admin_plataforma_bp.route("/empresas/<int:id>/modulos/<slug>/bloquear", methods=["POST"])
+@login_required
+@requer_admin_plataforma
+def bloquear_modulo_empresa(id, slug):
+    if slug not in MODULOS:
+        flash("Módulo inválido.", "warning")
+        return redirect(url_for("admin_plataforma.empresa_modulos", id=id))
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            INSERT INTO company_modulos (company_id, modulo, status)
+            VALUES (%s, %s, 'bloqueado')
+            ON CONFLICT (company_id, modulo) DO UPDATE SET status='bloqueado'
+        """, (id, slug))
+        conn.commit()
+        flash(f"Módulo \"{MODULOS[slug]['nome']}\" bloqueado.", "info")
+    except Exception as e:
+        conn.rollback()
+        flash(f"Erro ao bloquear módulo: {e}", "danger")
+    finally:
+        cur.close()
+        conn.close()
+    return redirect(url_for("admin_plataforma.empresa_modulos", id=id))

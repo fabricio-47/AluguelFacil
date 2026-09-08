@@ -8,6 +8,7 @@ from database import get_db_connection
 from permissions import requer_role, CARGOS_CUSTOMIZAVEIS, GRUPOS_PERMISSOES, LABEL_PERMISSAO, PERMISSOES_POR_ROLE
 from asaas_config import cifrar
 from validators import validar_forca_senha
+from modulos import MODULOS
 
 configuracoes_bp = Blueprint("configuracoes", __name__, url_prefix="/configuracoes")
 
@@ -74,6 +75,21 @@ def pagina_configuracoes():
         for cargo in CARGOS_CUSTOMIZAVEIS
     }
 
+    cur.execute(
+        "SELECT modulo, status, trial_termina_em FROM company_modulos WHERE company_id=%s",
+        (current_user.company_id,),
+    )
+    modulos_por_slug = {row["modulo"]: row for row in cur.fetchall()}
+    modulos_view = []
+    for slug, info in MODULOS.items():
+        linha = modulos_por_slug.get(slug)
+        modulos_view.append({
+            "nome": info["nome"],
+            "preco": info["preco"],
+            "status": linha["status"] if linha else "nao_contratado",
+            "trial_termina_em": linha["trial_termina_em"] if linha else None,
+        })
+
     cur.close()
     conn.close()
     return render_template(
@@ -84,6 +100,7 @@ def pagina_configuracoes():
         grupos_permissoes=GRUPOS_PERMISSOES,
         label_permissao=LABEL_PERMISSAO,
         permissoes_efetivas=permissoes_efetivas,
+        modulos_contratados=modulos_view,
     )
 
 
