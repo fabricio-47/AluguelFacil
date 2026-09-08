@@ -1,4 +1,4 @@
-# Ambiente virtual (não versionar nunca)
+﻿# Ambiente virtual (nÃ£o versionar nunca)
 venv/
 ENV/
 env/
@@ -11,19 +11,19 @@ __pycache__/
 *.egg-info/
 .eggs/
 
-# Banco de dados local (você recria com flask init-db)
+# Banco de dados local (vocÃª recria com flask init-db)
 banco.sqlite
 
 # Logs
 *.log
 
-# Arquivos temporários
+# Arquivos temporÃ¡rios
 *.swp
 *.swo
 *.tmp
 *.bak
 
-# Configurações de IDE
+# ConfiguraÃ§Ãµes de IDE
 .vscode/
 .idea/
 
@@ -35,8 +35,10 @@ Thumbs.db
 .env
 .env.*
 
-# Pastas de uploads (documentos/imagens de clientes — nunca versionar)
+# Pastas de uploads (documentos/imagens de clientes â€” nunca versionar)
 uploads/
 uploads_motos/
 uploads_contratos/
 uploads_habilitacoes/
+backups/
+
