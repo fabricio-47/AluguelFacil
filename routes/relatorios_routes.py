@@ -6,11 +6,14 @@ from flask_login import login_required, current_user
 from xhtml2pdf import pisa
 
 from database import get_db_connection
+from modulos import gate_modulo
 from permissions import tem_permissao, landing_url
 from periodos import intervalo_periodo
 from relatorios import RELATORIOS
 
 relatorios_bp = Blueprint("relatorios", __name__, url_prefix="/relatorios")
+
+relatorios_bp.before_request(gate_modulo("relatorios"))
 
 
 @relatorios_bp.route("/")

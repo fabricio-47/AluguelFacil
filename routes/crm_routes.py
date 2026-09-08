@@ -3,9 +3,12 @@ from flask_login import login_required, current_user
 from psycopg2.extras import RealDictCursor
 
 from database import get_db_connection
+from modulos import gate_modulo
 from permissions import requer_permissao, tem_permissao, tem_role, VER_PIPELINE, GERENCIAR_PIPELINE
 
 crm_bp = Blueprint("crm", __name__, url_prefix="/crm")
+
+crm_bp.before_request(gate_modulo("crm"))
 
 ETAPAS_PIPELINE = (
     "novo_cliente", "contato_realizado", "orcamento_enviado",

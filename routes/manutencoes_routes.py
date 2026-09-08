@@ -4,10 +4,13 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 
 from database import get_db_connection
+from modulos import gate_modulo
 from permissions import requer_permissao, tem_permissao, VER_MANUTENCOES, GERENCIAR_MANUTENCOES
 from estoque import registrar_movimentacao
 
 manutencoes_bp = Blueprint("manutencoes", __name__, url_prefix="/manutencoes")
+
+manutencoes_bp.before_request(gate_modulo("manutencoes"))
 
 TIPOS = ("preventiva", "corretiva", "emergencial")
 STATUS = ("aberta", "em_andamento", "concluida")

@@ -7,6 +7,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from xhtml2pdf import pisa
 from database import get_db_connection
+from modulos import gate_modulo
 from config import Config
 import os
 
@@ -20,6 +21,8 @@ from relatorios import STATUS_RECEBIDO
 from cliente_status import cliente_precisa_atualizar_comprovante
 
 locacoes_bp = Blueprint("locacoes", __name__, url_prefix="/locacoes")
+
+locacoes_bp.before_request(gate_modulo("locacoes"))
 
 # ==== Listar locaÃ§Ãµes ativas + Criar nova ====
 @locacoes_bp.route("/", methods=["GET", "POST"])

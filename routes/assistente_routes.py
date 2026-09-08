@@ -2,10 +2,13 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 
 from database import get_db_connection
+from modulos import gate_modulo
 from permissions import requer_permissao, VER_ASSISTENTE
 from ia_assistente import perguntar, AssistenteError
 
 assistente_bp = Blueprint("assistente", __name__, url_prefix="/assistente")
+
+assistente_bp.before_request(gate_modulo("assistente"))
 
 SESSION_KEY = "assistente_historico"
 MAX_TROCAS = 3  # 3 perguntas + 3 respostas = 6 entradas — a sessão Flask é um cookie assinado, precisa caber

@@ -5,10 +5,13 @@ from flask_login import login_required, current_user
 from psycopg2.extras import RealDictCursor
 
 from database import get_db_connection
+from modulos import gate_modulo
 from permissions import requer_permissao, tem_permissao, tem_role, VER_ORCAMENTOS, GERENCIAR_ORCAMENTOS
 from routes.locacoes_routes import criar_locacao_interna, AsaasError, ComprovanteDesatualizadoError, AcessoNegadoError
 
 orcamentos_bp = Blueprint("orcamentos", __name__, url_prefix="/orcamentos")
+
+orcamentos_bp.before_request(gate_modulo("orcamentos"))
 
 
 def _pode_ver_todos():

@@ -4,12 +4,15 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 
 from database import get_db_connection
+from modulos import gate_modulo
 from permissions import requer_permissao, requer_role, tem_permissao, VER_DESPESAS, GERENCIAR_DESPESAS
 from periodos import parse_date, limites_mes, intervalo_periodo
 
 TIPOS_MULTA = ("fixa", "percentual", "nova_diaria")
 
 financeiro_bp = Blueprint("financeiro", __name__, url_prefix="/financeiro")
+
+financeiro_bp.before_request(gate_modulo("financeiro"))
 
 CATEGORIAS = {
     "manutencao", "fornecedor", "funcionario", "energia",

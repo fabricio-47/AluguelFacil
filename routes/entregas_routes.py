@@ -2,9 +2,12 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 
 from database import get_db_connection
+from modulos import gate_modulo
 from permissions import requer_permissao, tem_permissao, tem_role, VER_ENTREGAS, GERENCIAR_ENTREGAS
 
 entregas_bp = Blueprint("entregas", __name__, url_prefix="/entregas")
+
+entregas_bp.before_request(gate_modulo("entregas"))
 
 STATUS = ("aguardando", "em_separacao", "saiu_para_entrega", "entregue", "retirada_agendada", "finalizada")
 
