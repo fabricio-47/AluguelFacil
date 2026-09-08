@@ -1,0 +1,29 @@
+name: Backup diario do banco AluguelFacil
+
+on:
+  schedule:
+    - cron: '0 2 * * *'   # 02:00 UTC = 23:00 horario de Brasilia (UTC-3)
+  workflow_dispatch: {}
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Instalar cliente PostgreSQL
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Rodar pg_dump
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_BACKUP }}
+        run: |
+          mkdir -p backup
+          DATA=$(date +%Y%m%d_%H%M%S)
+          pg_dump "$DATABASE_URL" -F c -f "backup/aluguelfacil_backup_${DATA}.dump"
+          ls -la backup/
+
+      - name: Enviar backup como artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: aluguelfacil-backup-${{ github.run_id }}
+          path: backup/*.dump
+          retention-days: 30
