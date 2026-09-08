@@ -9,8 +9,12 @@ jobs:
   backup:
     runs-on: ubuntu-latest
     steps:
-      - name: Instalar cliente PostgreSQL
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Instalar cliente PostgreSQL 18
+        run: |
+          sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-18
 
       - name: Rodar pg_dump
         env:
@@ -18,7 +22,7 @@ jobs:
         run: |
           mkdir -p backup
           DATA=$(date +%Y%m%d_%H%M%S)
-          pg_dump "$DATABASE_URL" -F c -f "backup/aluguelfacil_backup_${DATA}.dump"
+          /usr/lib/postgresql/18/bin/pg_dump "$DATABASE_URL" -F c -f "backup/aluguelfacil_backup_${DATA}.dump"
           ls -la backup/
 
       - name: Enviar backup como artifact
