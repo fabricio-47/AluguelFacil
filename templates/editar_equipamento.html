@@ -107,6 +107,42 @@
           <input type="file" name="foto" class="form-control" accept=".jpg,.jpeg,.png">
         </div>
 
+        <div class="col-12"><hr><small class="text-muted">Dados do veículo (opcional — só preencha se for um veículo)</small></div>
+        <div class="col-md-2">
+          <label class="form-label">Placa</label>
+          <input type="text" name="placa" class="form-control" maxlength="10" value="{{ equipamento.placa or '' }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Chassi</label>
+          <input type="text" name="chassi" class="form-control" maxlength="50" value="{{ equipamento.chassi or '' }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Renavam</label>
+          <input type="text" name="renavam" class="form-control" maxlength="20" value="{{ equipamento.renavam or '' }}">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">KM atual</label>
+          <input type="number" min="0" name="quilometragem" class="form-control" value="{{ equipamento.quilometragem if equipamento.quilometragem is not none else '' }}">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Combustível</label>
+          <select name="combustivel" class="form-select">
+            <option value="" {% if not equipamento.combustivel %}selected{% endif %}>-</option>
+            {% for opc in ['flex','gasolina','diesel','eletrico'] %}
+            <option value="{{ opc }}" {% if equipamento.combustivel == opc %}selected{% endif %}>{{ opc|capitalize }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Câmbio</label>
+          <select name="cambio" class="form-select">
+            <option value="" {% if not equipamento.cambio %}selected{% endif %}>-</option>
+            {% for opc in ['manual','automatico'] %}
+            <option value="{{ opc }}" {% if equipamento.cambio == opc %}selected{% endif %}>{{ opc|capitalize }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
         <div class="col-md-12">
           <label class="form-label">Descrição</label>
           <textarea name="descricao" class="form-control">{{ equipamento.descricao or '' }}</textarea>

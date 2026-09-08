@@ -71,6 +71,42 @@
           <input type="file" name="foto" class="form-control" accept=".jpg,.jpeg,.png">
         </div>
 
+        <div class="col-12"><hr><small class="text-muted">Dados do veículo (opcional — só preencha se for um veículo)</small></div>
+        <div class="col-md-2">
+          <label class="form-label">Placa</label>
+          <input type="text" name="placa" class="form-control" maxlength="10" placeholder="ABC1D23">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Chassi</label>
+          <input type="text" name="chassi" class="form-control" maxlength="50">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Renavam</label>
+          <input type="text" name="renavam" class="form-control" maxlength="20">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">KM atual</label>
+          <input type="number" min="0" name="quilometragem" class="form-control">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Combustível</label>
+          <select name="combustivel" class="form-select">
+            <option value="">-</option>
+            <option value="flex">Flex</option>
+            <option value="gasolina">Gasolina</option>
+            <option value="diesel">Diesel</option>
+            <option value="eletrico">Elétrico</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Câmbio</label>
+          <select name="cambio" class="form-select">
+            <option value="">-</option>
+            <option value="manual">Manual</option>
+            <option value="automatico">Automático</option>
+          </select>
+        </div>
+
         <div class="col-md-12">
           <label class="form-label">Descrição</label>
           <textarea name="descricao" class="form-control"></textarea>
@@ -140,7 +176,7 @@
             <td>{{ equipamento.codigo_interno or '–' }}</td>
             <td>{{ equipamento.nome }}</td>
             <td>{{ equipamento.categoria_nome or '–' }}</td>
-            <td>{{ [equipamento.marca, equipamento.modelo] | select | join(' / ') or '–' }}</td>
+            <td>{{ [equipamento.marca, equipamento.modelo] | select | join(' / ') or '–' }}{% if equipamento.placa %} <span class="badge bg-secondary">{{ equipamento.placa }}</span>{% endif %}</td>
             <td>
               {% set cores = {'disponivel': 'success', 'reservado': 'info', 'alugado': 'primary',
                                'manutencao': 'warning', 'danificado': 'danger', 'perdido': 'dark', 'inativo': 'secondary'} %}

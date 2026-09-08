@@ -57,6 +57,12 @@ def _campos_formulario(form):
         "caucao": form.get("caucao") or None,
         "status": status,
         "quantidade_disponivel": 1 if disponivel else 0,
+        "placa": (form.get("placa") or "").strip().upper() or None,
+        "chassi": (form.get("chassi") or "").strip().upper() or None,
+        "renavam": (form.get("renavam") or "").strip() or None,
+        "quilometragem": form.get("quilometragem") or None,
+        "combustivel": (form.get("combustivel") or "").strip() or None,
+        "cambio": (form.get("cambio") or "").strip() or None,
     }
 
 # ======================
@@ -112,11 +118,13 @@ def listar_equipamentos():
                 INSERT INTO equipment_items (
                     company_id, branch_id, categoria_id, codigo_interno, sku, codigo_barras, nome, marca, modelo,
                     numero_serie, ano, descricao, valor_compra, valor_diaria, valor_semanal,
-                    valor_quinzenal, valor_mensal, valor_hora, caucao, status, quantidade_disponivel
+                    valor_quinzenal, valor_mensal, valor_hora, caucao, status, quantidade_disponivel,
+                    placa, chassi, renavam, quilometragem, combustivel, cambio
                 ) VALUES (%(company_id)s,%(branch_id)s,%(categoria_id)s,%(codigo_interno)s,%(sku)s,%(codigo_barras)s,%(nome)s,%(marca)s,
                     %(modelo)s,%(numero_serie)s,%(ano)s,%(descricao)s,%(valor_compra)s,%(valor_diaria)s,
                     %(valor_semanal)s,%(valor_quinzenal)s,%(valor_mensal)s,%(valor_hora)s,%(caucao)s,
-                    %(status)s,%(quantidade_disponivel)s)
+                    %(status)s,%(quantidade_disponivel)s,
+                    %(placa)s,%(chassi)s,%(renavam)s,%(quilometragem)s,%(combustivel)s,%(cambio)s)
                 RETURNING id
             """, campos)
             equipamento_id = cur.fetchone()["id"]
@@ -144,7 +152,7 @@ def listar_equipamentos():
 
     cur.execute("""
         SELECT ei.id, ei.codigo_interno, ei.nome, ei.marca, ei.modelo, ei.ano, ei.status,
-               ei.foto, ei.documento_arquivo, ec.nome AS categoria_nome
+               ei.foto, ei.documento_arquivo, ec.nome AS categoria_nome, ei.placa
         FROM equipment_items ei
         LEFT JOIN equipment_categories ec ON ec.id = ei.categoria_id
         WHERE ei.company_id = %s
@@ -198,7 +206,9 @@ def editar_equipamento(id):
                         valor_compra=%(valor_compra)s, valor_diaria=%(valor_diaria)s,
                         valor_semanal=%(valor_semanal)s, valor_quinzenal=%(valor_quinzenal)s,
                         valor_mensal=%(valor_mensal)s, valor_hora=%(valor_hora)s, caucao=%(caucao)s,
-                        status=%(status)s, quantidade_disponivel=%(quantidade_disponivel)s
+                        status=%(status)s, quantidade_disponivel=%(quantidade_disponivel)s,
+                        placa=%(placa)s, chassi=%(chassi)s, renavam=%(renavam)s,
+                        quilometragem=%(quilometragem)s, combustivel=%(combustivel)s, cambio=%(cambio)s
                     WHERE id=%(id)s AND company_id=%(company_id)s
                 """, campos)
 
@@ -231,7 +241,8 @@ def editar_equipamento(id):
         SELECT ei.id, ei.categoria_id, ei.codigo_interno, ei.sku, ei.codigo_barras, ei.nome, ei.marca, ei.modelo,
                ei.numero_serie, ei.ano, ei.descricao, ei.foto, ei.documento_arquivo,
                ei.valor_compra, ei.valor_diaria, ei.valor_semanal, ei.valor_quinzenal, ei.valor_mensal, ei.valor_hora,
-               ei.caucao, ei.status, ei.branch_id, b.nome AS filial_nome
+               ei.caucao, ei.status, ei.branch_id, b.nome AS filial_nome,
+               ei.placa, ei.chassi, ei.renavam, ei.quilometragem, ei.combustivel, ei.cambio
         FROM equipment_items ei
         LEFT JOIN branches b ON b.id = ei.branch_id
         WHERE ei.id=%s AND ei.company_id=%s
