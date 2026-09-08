@@ -1,0 +1,21 @@
+name: Diagnostico companies (temporario)
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Instalar cliente PostgreSQL 18
+        run: |
+          sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-18
+      - name: Listar companies
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_BACKUP }}
+        run: |
+          PSQL="/usr/lib/postgresql/18/bin/psql"
+          $PSQL "$DATABASE_URL" -c "SELECT id, nome, plano, status, ativo FROM companies ORDER BY id;"
