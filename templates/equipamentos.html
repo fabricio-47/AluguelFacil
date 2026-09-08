@@ -107,6 +107,43 @@
           </select>
         </div>
 
+        <div class="col-12"><hr><small class="text-muted">Dados do imóvel (opcional — só preencha se for um imóvel)</small></div>
+        <div class="col-md-6">
+          <label class="form-label">Endereço completo</label>
+          <input type="text" name="endereco_completo" class="form-control">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Área (m²)</label>
+          <input type="number" step="0.01" min="0" name="metro_quadrado" class="form-control">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Tipo</label>
+          <select name="tipo_imovel" class="form-select">
+            <option value="">-</option>
+            <option value="apartamento">Apartamento</option>
+            <option value="casa">Casa</option>
+            <option value="comercial">Comercial</option>
+            <option value="terreno">Terreno</option>
+            <option value="galpao">Galpão</option>
+          </select>
+        </div>
+        <div class="col-md-1">
+          <label class="form-label">Quartos</label>
+          <input type="number" min="0" name="quartos" class="form-control">
+        </div>
+        <div class="col-md-1">
+          <label class="form-label">Banheiros</label>
+          <input type="number" min="0" name="banheiros" class="form-control">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">IPTU (R$)</label>
+          <input type="number" step="0.01" min="0" name="iptu" class="form-control">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Condomínio (R$)</label>
+          <input type="number" step="0.01" min="0" name="condominio" class="form-control">
+        </div>
+
         <div class="col-md-12">
           <label class="form-label">Descrição</label>
           <textarea name="descricao" class="form-control"></textarea>
@@ -176,7 +213,7 @@
             <td>{{ equipamento.codigo_interno or '–' }}</td>
             <td>{{ equipamento.nome }}</td>
             <td>{{ equipamento.categoria_nome or '–' }}</td>
-            <td>{{ [equipamento.marca, equipamento.modelo] | select | join(' / ') or '–' }}{% if equipamento.placa %} <span class="badge bg-secondary">{{ equipamento.placa }}</span>{% endif %}</td>
+            <td>{{ [equipamento.marca, equipamento.modelo] | select | join(' / ') or '–' }}{% if equipamento.placa %} <span class="badge bg-secondary">{{ equipamento.placa }}</span>{% endif %}{% if equipamento.tipo_imovel %} <span class="badge bg-info text-dark">{{ equipamento.tipo_imovel }}</span>{% endif %}</td>
             <td>
               {% set cores = {'disponivel': 'success', 'reservado': 'info', 'alugado': 'primary',
                                'manutencao': 'warning', 'danificado': 'danger', 'perdido': 'dark', 'inativo': 'secondary'} %}

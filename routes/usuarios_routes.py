@@ -6,7 +6,10 @@ from psycopg2.extras import RealDictCursor
 from werkzeug.security import generate_password_hash
 
 from database import get_db_connection
-from permissions import requer_permissao, tem_permissao, VER_USUARIOS, GERENCIAR_USUARIOS
+from permissions import (
+    requer_permissao, tem_permissao, VER_USUARIOS, GERENCIAR_USUARIOS,
+    CARGOS_CUSTOMIZAVEIS, GRUPOS_PERMISSOES, LABEL_PERMISSAO, PERMISSOES_POR_ROLE,
+)
 from planos import verificar_limite
 from validators import validar_forca_senha
 
@@ -82,7 +85,30 @@ def listar_usuarios():
             FROM usuarios WHERE company_id=%s ORDER BY username ASC
         """, (current_user.company_id,))
         usuarios = cur.fetchall()
-        return render_template("usuarios.html", usuarios=usuarios, roles=ROLES_DISPONIVEIS)
+
+        # Matriz de acesso por modulo (por cargo) -- so quem administra a conta
+        # pode ver/editar; reaproveita a mesma tabela que Configuracoes usa.
+        pode_editar_permissoes = current_user.role in ("super_admin", "admin_locadora")
+        permissoes_efetivas = {}
+        if pode_editar_permissoes:
+            cur.execute(
+                "SELECT role, permissoes FROM permissoes_customizadas WHERE company_id=%s",
+                (current_user.company_id,),
+            )
+            customizadas_por_cargo = {row["role"]: set(row["permissoes"]) for row in cur.fetchall()}
+            permissoes_efetivas = {
+                cargo: customizadas_por_cargo.get(cargo, set(PERMISSOES_POR_ROLE.get(cargo, ())))
+                for cargo in CARGOS_CUSTOMIZAVEIS
+            }
+
+        return render_template(
+            "usuarios.html", usuarios=usuarios, roles=ROLES_DISPONIVEIS,
+            pode_editar_permissoes=pode_editar_permissoes,
+            cargos_customizaveis=CARGOS_CUSTOMIZAVEIS,
+            grupos_permissoes=GRUPOS_PERMISSOES,
+            label_permissao=LABEL_PERMISSAO,
+            permissoes_efetivas=permissoes_efetivas,
+        )
     finally:
         cur.close()
         conn.close()

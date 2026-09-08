@@ -143,6 +143,41 @@
           </select>
         </div>
 
+        <div class="col-12"><hr><small class="text-muted">Dados do imóvel (opcional — só preencha se for um imóvel)</small></div>
+        <div class="col-md-6">
+          <label class="form-label">Endereço completo</label>
+          <input type="text" name="endereco_completo" class="form-control" value="{{ equipamento.endereco_completo or '' }}">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Área (m²)</label>
+          <input type="number" step="0.01" min="0" name="metro_quadrado" class="form-control" value="{{ equipamento.metro_quadrado if equipamento.metro_quadrado is not none else '' }}">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Tipo</label>
+          <select name="tipo_imovel" class="form-select">
+            <option value="" {% if not equipamento.tipo_imovel %}selected{% endif %}>-</option>
+            {% for opc in ['apartamento','casa','comercial','terreno','galpao'] %}
+            <option value="{{ opc }}" {% if equipamento.tipo_imovel == opc %}selected{% endif %}>{{ opc|capitalize }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-1">
+          <label class="form-label">Quartos</label>
+          <input type="number" min="0" name="quartos" class="form-control" value="{{ equipamento.quartos if equipamento.quartos is not none else '' }}">
+        </div>
+        <div class="col-md-1">
+          <label class="form-label">Banheiros</label>
+          <input type="number" min="0" name="banheiros" class="form-control" value="{{ equipamento.banheiros if equipamento.banheiros is not none else '' }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">IPTU (R$)</label>
+          <input type="number" step="0.01" min="0" name="iptu" class="form-control" value="{{ equipamento.iptu if equipamento.iptu is not none else '' }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Condomínio (R$)</label>
+          <input type="number" step="0.01" min="0" name="condominio" class="form-control" value="{{ equipamento.condominio if equipamento.condominio is not none else '' }}">
+        </div>
+
         <div class="col-md-12">
           <label class="form-label">Descrição</label>
           <textarea name="descricao" class="form-control">{{ equipamento.descricao or '' }}</textarea>

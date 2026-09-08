@@ -63,6 +63,13 @@ def _campos_formulario(form):
         "quilometragem": form.get("quilometragem") or None,
         "combustivel": (form.get("combustivel") or "").strip() or None,
         "cambio": (form.get("cambio") or "").strip() or None,
+        "endereco_completo": (form.get("endereco_completo") or "").strip() or None,
+        "metro_quadrado": form.get("metro_quadrado") or None,
+        "quartos": form.get("quartos") or None,
+        "banheiros": form.get("banheiros") or None,
+        "tipo_imovel": (form.get("tipo_imovel") or "").strip() or None,
+        "iptu": form.get("iptu") or None,
+        "condominio": form.get("condominio") or None,
     }
 
 # ======================
@@ -119,12 +126,14 @@ def listar_equipamentos():
                     company_id, branch_id, categoria_id, codigo_interno, sku, codigo_barras, nome, marca, modelo,
                     numero_serie, ano, descricao, valor_compra, valor_diaria, valor_semanal,
                     valor_quinzenal, valor_mensal, valor_hora, caucao, status, quantidade_disponivel,
-                    placa, chassi, renavam, quilometragem, combustivel, cambio
+                    placa, chassi, renavam, quilometragem, combustivel, cambio,
+                    endereco_completo, metro_quadrado, quartos, banheiros, tipo_imovel, iptu, condominio
                 ) VALUES (%(company_id)s,%(branch_id)s,%(categoria_id)s,%(codigo_interno)s,%(sku)s,%(codigo_barras)s,%(nome)s,%(marca)s,
                     %(modelo)s,%(numero_serie)s,%(ano)s,%(descricao)s,%(valor_compra)s,%(valor_diaria)s,
                     %(valor_semanal)s,%(valor_quinzenal)s,%(valor_mensal)s,%(valor_hora)s,%(caucao)s,
                     %(status)s,%(quantidade_disponivel)s,
-                    %(placa)s,%(chassi)s,%(renavam)s,%(quilometragem)s,%(combustivel)s,%(cambio)s)
+                    %(placa)s,%(chassi)s,%(renavam)s,%(quilometragem)s,%(combustivel)s,%(cambio)s,
+                    %(endereco_completo)s,%(metro_quadrado)s,%(quartos)s,%(banheiros)s,%(tipo_imovel)s,%(iptu)s,%(condominio)s)
                 RETURNING id
             """, campos)
             equipamento_id = cur.fetchone()["id"]
@@ -152,7 +161,7 @@ def listar_equipamentos():
 
     cur.execute("""
         SELECT ei.id, ei.codigo_interno, ei.nome, ei.marca, ei.modelo, ei.ano, ei.status,
-               ei.foto, ei.documento_arquivo, ec.nome AS categoria_nome, ei.placa
+               ei.foto, ei.documento_arquivo, ec.nome AS categoria_nome, ei.placa, ei.tipo_imovel
         FROM equipment_items ei
         LEFT JOIN equipment_categories ec ON ec.id = ei.categoria_id
         WHERE ei.company_id = %s
@@ -208,7 +217,10 @@ def editar_equipamento(id):
                         valor_mensal=%(valor_mensal)s, valor_hora=%(valor_hora)s, caucao=%(caucao)s,
                         status=%(status)s, quantidade_disponivel=%(quantidade_disponivel)s,
                         placa=%(placa)s, chassi=%(chassi)s, renavam=%(renavam)s,
-                        quilometragem=%(quilometragem)s, combustivel=%(combustivel)s, cambio=%(cambio)s
+                        quilometragem=%(quilometragem)s, combustivel=%(combustivel)s, cambio=%(cambio)s,
+                        endereco_completo=%(endereco_completo)s, metro_quadrado=%(metro_quadrado)s,
+                        quartos=%(quartos)s, banheiros=%(banheiros)s, tipo_imovel=%(tipo_imovel)s,
+                        iptu=%(iptu)s, condominio=%(condominio)s
                     WHERE id=%(id)s AND company_id=%(company_id)s
                 """, campos)
 
@@ -242,7 +254,8 @@ def editar_equipamento(id):
                ei.numero_serie, ei.ano, ei.descricao, ei.foto, ei.documento_arquivo,
                ei.valor_compra, ei.valor_diaria, ei.valor_semanal, ei.valor_quinzenal, ei.valor_mensal, ei.valor_hora,
                ei.caucao, ei.status, ei.branch_id, b.nome AS filial_nome,
-               ei.placa, ei.chassi, ei.renavam, ei.quilometragem, ei.combustivel, ei.cambio
+               ei.placa, ei.chassi, ei.renavam, ei.quilometragem, ei.combustivel, ei.cambio,
+               ei.endereco_completo, ei.metro_quadrado, ei.quartos, ei.banheiros, ei.tipo_imovel, ei.iptu, ei.condominio
         FROM equipment_items ei
         LEFT JOIN branches b ON b.id = ei.branch_id
         WHERE ei.id=%s AND ei.company_id=%s

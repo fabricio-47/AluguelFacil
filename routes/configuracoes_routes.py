@@ -114,6 +114,12 @@ def salvar_permissoes():
         cur.close()
         conn.close()
 
+    # "next" permite voltar pra tela de origem (ex: Usuarios), em vez de
+    # sempre cair em Configuracoes -- so aceita caminho local (comeca com "/")
+    # pra nao virar open redirect.
+    destino = request.form.get("next") or ""
+    if destino.startswith("/"):
+        return redirect(destino)
     return redirect(url_for("configuracoes.pagina_configuracoes"))
 
 
