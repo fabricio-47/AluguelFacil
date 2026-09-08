@@ -9,6 +9,7 @@ from models.user import User
 from permissions import landing_url
 from text_utils import slugify
 from validators import validar_forca_senha
+from modulos import MODULOS, TRIAL_DIAS
 from werkzeug.security import generate_password_hash
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
@@ -265,6 +266,14 @@ def cadastro_publico():
                 INSERT INTO usuarios (username, email, senha, role, company_id, is_admin)
                 VALUES (%s, %s, %s, 'admin_locadora', %s, FALSE)
             """, (username, email, generate_password_hash(senha), company_id))
+
+            trial_termina_em = dt.datetime.utcnow() + dt.timedelta(days=TRIAL_DIAS)
+            for slug_modulo in MODULOS.keys():
+                cur.execute("""
+                    INSERT INTO company_modulos (company_id, modulo, status, trial_termina_em)
+                    VALUES (%s, %s, 'trial', %s)
+                    ON CONFLICT (company_id, modulo) DO NOTHING
+                """, (company_id, slug_modulo, trial_termina_em))
 
             conn.commit()
             flash("Conta criada com sucesso! Faça login para começar.", "success")
