@@ -1,0 +1,43 @@
+name: Limpeza dados teste signup (temporario)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Instalar psycopg2
+        run: pip install psycopg2-binary --break-system-packages || pip install psycopg2-binary
+      - name: Rodar limpeza
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_BACKUP }}
+        run: |
+          python3 << 'PYEOF'
+          import psycopg2, os
+          conn = psycopg2.connect(os.environ["DATABASE_URL"])
+          cur = conn.cursor()
+
+          user_ids = (28, 29, 30)
+          company_ids = (14, 15, 16)
+
+          cur.execute("DELETE FROM usuarios WHERE id = ANY(%s)", (list(user_ids),))
+          print("usuarios deletados:", cur.rowcount)
+
+          cur.execute("DELETE FROM branches WHERE company_id = ANY(%s)", (list(company_ids),))
+          print("branches deletados:", cur.rowcount)
+
+          cur.execute("DELETE FROM company_modulos WHERE company_id = ANY(%s)", (list(company_ids),))
+          print("company_modulos deletados:", cur.rowcount)
+
+          cur.execute("DELETE FROM companies WHERE id = ANY(%s)", (list(company_ids),))
+          print("companies deletados:", cur.rowcount)
+
+          cur.execute("DELETE FROM signup_attempts")
+          print("signup_attempts limpos:", cur.rowcount)
+
+          conn.commit()
+          cur.close()
+          conn.close()
+          print("OK - limpeza concluida")
+          PYEOF
