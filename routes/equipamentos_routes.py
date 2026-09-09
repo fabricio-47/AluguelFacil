@@ -39,9 +39,9 @@ def _campos_formulario(form):
     if status not in STATUS_EDITAVEIS:
         status = "disponivel"
     disponivel = status == "disponivel"
-    tipo_item = (form.get("tipo_item") or "equipamento").strip()
+    tipo_item = (form.get("tipo_item") or "equipamentos").strip()
     if tipo_item not in MODULOS_INVENTARIO:
-        tipo_item = "equipamento"
+        tipo_item = "equipamentos"
     return {
         "tipo_item": tipo_item,
         "categoria_id": form.get("categoria_id", type=int) or None,

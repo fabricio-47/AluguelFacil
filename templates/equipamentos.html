@@ -18,14 +18,14 @@
         <div class="col-md-4">
           <label class="form-label">Tipo do item *</label>
           <select name="tipo_item" id="tipo_item_novo" class="form-select" required onchange="atualizarSecoesTipoItem(this.value, 'novo')">
-            <option value="equipamento" {% if 'equipamento' not in tipos_liberados %}disabled{% endif %}>
-              Equipamento {% if 'equipamento' not in tipos_liberados %}(módulo não contratado){% endif %}
+            <option value="equipamentos" {% if 'equipamentos' not in tipos_liberados %}disabled{% endif %}>
+              Equipamento {% if 'equipamentos' not in tipos_liberados %}(módulo não contratado){% endif %}
             </option>
-            <option value="veiculo" {% if 'veiculo' not in tipos_liberados %}disabled{% endif %}>
-              Veículo {% if 'veiculo' not in tipos_liberados %}(módulo não contratado){% endif %}
+            <option value="veiculos" {% if 'veiculos' not in tipos_liberados %}disabled{% endif %}>
+              Veículo {% if 'veiculos' not in tipos_liberados %}(módulo não contratado){% endif %}
             </option>
-            <option value="imovel" {% if 'imovel' not in tipos_liberados %}disabled{% endif %}>
-              Imóvel {% if 'imovel' not in tipos_liberados %}(módulo não contratado){% endif %}
+            <option value="imoveis" {% if 'imoveis' not in tipos_liberados %}disabled{% endif %}>
+              Imóvel {% if 'imoveis' not in tipos_liberados %}(módulo não contratado){% endif %}
             </option>
           </select>
         </div>

@@ -245,10 +245,10 @@
 
     function atualizarSecoesTipoItem(tipo, sufixo) {
       document.querySelectorAll('.campo-veiculo-' + sufixo).forEach(function (el) {
-        el.style.display = (tipo === 'veiculo') ? '' : 'none';
+        el.style.display = (tipo === 'veiculos') ? '' : 'none';
       });
       document.querySelectorAll('.campo-imovel-' + sufixo).forEach(function (el) {
-        el.style.display = (tipo === 'imovel') ? '' : 'none';
+        el.style.display = (tipo === 'imoveis') ? '' : 'none';
       });
     }
   </script>

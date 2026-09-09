@@ -1,0 +1,16 @@
+name: Rodar migracao 026 tipo_item plural (temporario)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar psycopg2
+        run: pip install psycopg2-binary --break-system-packages || pip install psycopg2-binary
+      - name: Rodar migracao (apply)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_BACKUP }}
+        run: python3 migrate_tipo_item_plural.py --apply
