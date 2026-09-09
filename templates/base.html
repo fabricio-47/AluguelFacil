@@ -242,6 +242,15 @@
         span.textContent = input.files.length + " arquivos selecionados";
       }
     }
+
+    function atualizarSecoesTipoItem(tipo, sufixo) {
+      document.querySelectorAll('.campo-veiculo-' + sufixo).forEach(function (el) {
+        el.style.display = (tipo === 'veiculo') ? '' : 'none';
+      });
+      document.querySelectorAll('.campo-imovel-' + sufixo).forEach(function (el) {
+        el.style.display = (tipo === 'imovel') ? '' : 'none';
+      });
+    }
   </script>
   <script>
     (function () {

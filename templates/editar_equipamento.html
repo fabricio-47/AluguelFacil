@@ -39,6 +39,12 @@
     <form method="post" enctype="multipart/form-data">
       <div class="row g-3">
         <div class="col-md-4">
+          <label class="form-label">Tipo do item</label>
+          <input type="text" class="form-control" value="{{ modulos_info[equipamento.tipo_item].nome if equipamento.tipo_item in modulos_info else equipamento.tipo_item }}" disabled>
+          <input type="hidden" name="tipo_item" id="tipo_item_edit" value="{{ equipamento.tipo_item }}">
+          <small class="text-muted">O tipo não pode ser trocado depois de criado.</small>
+        </div>
+        <div class="col-md-4">
           <label class="form-label">Nome *</label>
           <input type="text" name="nome" class="form-control" value="{{ equipamento.nome }}" required>
         </div>
@@ -112,24 +118,24 @@
                  onchange="atualizarNomeArquivo(this, 'foto_equip_edit_nome')">
         </div>
 
-        <div class="col-12"><hr><small class="text-muted">Dados do veículo (opcional — só preencha se for um veículo)</small></div>
-        <div class="col-md-2">
+        <div class="col-12 campo-veiculo-edit"><hr><small class="text-muted">Dados do veículo</small></div>
+        <div class="col-md-2 campo-veiculo-edit">
           <label class="form-label">Placa</label>
           <input type="text" name="placa" class="form-control" maxlength="10" value="{{ equipamento.placa or '' }}">
         </div>
-        <div class="col-md-3">
+        <div class="col-md-3 campo-veiculo-edit">
           <label class="form-label">Chassi</label>
           <input type="text" name="chassi" class="form-control" maxlength="50" value="{{ equipamento.chassi or '' }}">
         </div>
-        <div class="col-md-3">
+        <div class="col-md-3 campo-veiculo-edit">
           <label class="form-label">Renavam</label>
           <input type="text" name="renavam" class="form-control" maxlength="20" value="{{ equipamento.renavam or '' }}">
         </div>
-        <div class="col-md-2">
+        <div class="col-md-2 campo-veiculo-edit">
           <label class="form-label">KM atual</label>
           <input type="number" min="0" name="quilometragem" class="form-control" value="{{ equipamento.quilometragem if equipamento.quilometragem is not none else '' }}">
         </div>
-        <div class="col-md-2">
+        <div class="col-md-2 campo-veiculo-edit">
           <label class="form-label">Combustível</label>
           <select name="combustivel" class="form-select">
             <option value="" {% if not equipamento.combustivel %}selected{% endif %}>-</option>
@@ -138,7 +144,7 @@
             {% endfor %}
           </select>
         </div>
-        <div class="col-md-2">
+        <div class="col-md-2 campo-veiculo-edit">
           <label class="form-label">Câmbio</label>
           <select name="cambio" class="form-select">
             <option value="" {% if not equipamento.cambio %}selected{% endif %}>-</option>
@@ -148,24 +154,24 @@
           </select>
         </div>
 
-        <div class="col-12"><hr><small class="text-muted">Dados do imóvel (opcional — só preencha se for um imóvel)</small></div>
-        <div class="col-md-4">
+        <div class="col-12 campo-imovel-edit"><hr><small class="text-muted">Dados do imóvel</small></div>
+        <div class="col-md-4 campo-imovel-edit">
           <label class="form-label">Endereço completo</label>
           <input type="text" name="endereco_completo" class="form-control" value="{{ equipamento.endereco_completo or '' }}">
         </div>
-        <div class="col-md-2">
+        <div class="col-md-2 campo-imovel-edit">
           <label class="form-label">Bairro</label>
           <input type="text" name="bairro" class="form-control" value="{{ equipamento.bairro or '' }}">
         </div>
-        <div class="col-md-2">
+        <div class="col-md-2 campo-imovel-edit">
           <label class="form-label">Cidade</label>
           <input type="text" name="cidade" class="form-control" value="{{ equipamento.cidade or '' }}">
         </div>
-        <div class="col-md-2">
+        <div class="col-md-2 campo-imovel-edit">
           <label class="form-label">Área (m²)</label>
           <input type="number" step="0.01" min="0" name="metro_quadrado" class="form-control" value="{{ equipamento.metro_quadrado if equipamento.metro_quadrado is not none else '' }}">
         </div>
-        <div class="col-md-2">
+        <div class="col-md-2 campo-imovel-edit">
           <label class="form-label">Tipo</label>
           <select name="tipo_imovel" class="form-select">
             <option value="" {% if not equipamento.tipo_imovel %}selected{% endif %}>-</option>
@@ -174,19 +180,19 @@
             {% endfor %}
           </select>
         </div>
-        <div class="col-md-1">
+        <div class="col-md-1 campo-imovel-edit">
           <label class="form-label">Quartos</label>
           <input type="number" min="0" name="quartos" class="form-control" value="{{ equipamento.quartos if equipamento.quartos is not none else '' }}">
         </div>
-        <div class="col-md-1">
+        <div class="col-md-1 campo-imovel-edit">
           <label class="form-label">Banheiros</label>
           <input type="number" min="0" name="banheiros" class="form-control" value="{{ equipamento.banheiros if equipamento.banheiros is not none else '' }}">
         </div>
-        <div class="col-md-3">
+        <div class="col-md-3 campo-imovel-edit">
           <label class="form-label">IPTU (R$)</label>
           <input type="number" step="0.01" min="0" name="iptu" class="form-control" value="{{ equipamento.iptu if equipamento.iptu is not none else '' }}">
         </div>
-        <div class="col-md-3">
+        <div class="col-md-3 campo-imovel-edit">
           <label class="form-label">Condomínio (R$)</label>
           <input type="number" step="0.01" min="0" name="condominio" class="form-control" value="{{ equipamento.condominio if equipamento.condominio is not none else '' }}">
         </div>
@@ -248,6 +254,12 @@
         {% endif %}
       </div>
     </form>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      var tipo = document.getElementById('tipo_item_edit').value;
+      atualizarSecoesTipoItem(tipo, 'edit');
+    });
+    </script>
   </div>
 </div>
 

@@ -16,6 +16,20 @@
     <form method="post" action="{{ url_for('equipamentos.listar_equipamentos') }}" enctype="multipart/form-data">
       <div class="row g-2">
         <div class="col-md-4">
+          <label class="form-label">Tipo do item *</label>
+          <select name="tipo_item" id="tipo_item_novo" class="form-select" required onchange="atualizarSecoesTipoItem(this.value, 'novo')">
+            <option value="equipamento" {% if 'equipamento' not in tipos_liberados %}disabled{% endif %}>
+              Equipamento {% if 'equipamento' not in tipos_liberados %}(módulo não contratado){% endif %}
+            </option>
+            <option value="veiculo" {% if 'veiculo' not in tipos_liberados %}disabled{% endif %}>
+              Veículo {% if 'veiculo' not in tipos_liberados %}(módulo não contratado){% endif %}
+            </option>
+            <option value="imovel" {% if 'imovel' not in tipos_liberados %}disabled{% endif %}>
+              Imóvel {% if 'imovel' not in tipos_liberados %}(módulo não contratado){% endif %}
+            </option>
+          </select>
+        </div>
+        <div class="col-md-4">
           <label class="form-label">Nome *</label>
           <input type="text" name="nome" class="form-control" required>
         </div>
@@ -79,24 +93,24 @@
                  onchange="atualizarNomeArquivo(this, 'foto_equip_novo_nome')">
         </div>
 
-        <div class="col-12"><hr><small class="text-muted">Dados do veículo (opcional — só preencha se for um veículo)</small></div>
-        <div class="col-md-2">
+        <div class="col-12 campo-veiculo-novo"><hr><small class="text-muted">Dados do veículo</small></div>
+        <div class="col-md-2 campo-veiculo-novo">
           <label class="form-label">Placa</label>
           <input type="text" name="placa" class="form-control" maxlength="10" placeholder="ABC1D23">
         </div>
-        <div class="col-md-3">
+        <div class="col-md-3 campo-veiculo-novo">
           <label class="form-label">Chassi</label>
           <input type="text" name="chassi" class="form-control" maxlength="50">
         </div>
-        <div class="col-md-3">
+        <div class="col-md-3 campo-veiculo-novo">
           <label class="form-label">Renavam</label>
           <input type="text" name="renavam" class="form-control" maxlength="20">
         </div>
-        <div class="col-md-2">
+        <div class="col-md-2 campo-veiculo-novo">
           <label class="form-label">KM atual</label>
           <input type="number" min="0" name="quilometragem" class="form-control">
         </div>
-        <div class="col-md-2">
+        <div class="col-md-2 campo-veiculo-novo">
           <label class="form-label">Combustível</label>
           <select name="combustivel" class="form-select">
             <option value="">-</option>
@@ -106,7 +120,7 @@
             <option value="eletrico">Elétrico</option>
           </select>
         </div>
-        <div class="col-md-2">
+        <div class="col-md-2 campo-veiculo-novo">
           <label class="form-label">Câmbio</label>
           <select name="cambio" class="form-select">
             <option value="">-</option>
@@ -115,24 +129,24 @@
           </select>
         </div>
 
-        <div class="col-12"><hr><small class="text-muted">Dados do imóvel (opcional — só preencha se for um imóvel)</small></div>
-        <div class="col-md-4">
+        <div class="col-12 campo-imovel-novo"><hr><small class="text-muted">Dados do imóvel</small></div>
+        <div class="col-md-4 campo-imovel-novo">
           <label class="form-label">Endereço completo</label>
           <input type="text" name="endereco_completo" class="form-control">
         </div>
-        <div class="col-md-2">
+        <div class="col-md-2 campo-imovel-novo">
           <label class="form-label">Bairro</label>
           <input type="text" name="bairro" class="form-control">
         </div>
-        <div class="col-md-2">
+        <div class="col-md-2 campo-imovel-novo">
           <label class="form-label">Cidade</label>
           <input type="text" name="cidade" class="form-control">
         </div>
-        <div class="col-md-2">
+        <div class="col-md-2 campo-imovel-novo">
           <label class="form-label">Área (m²)</label>
           <input type="number" step="0.01" min="0" name="metro_quadrado" class="form-control">
         </div>
-        <div class="col-md-2">
+        <div class="col-md-2 campo-imovel-novo">
           <label class="form-label">Tipo</label>
           <select name="tipo_imovel" class="form-select">
             <option value="">-</option>
@@ -143,19 +157,19 @@
             <option value="galpao">Galpão</option>
           </select>
         </div>
-        <div class="col-md-1">
+        <div class="col-md-1 campo-imovel-novo">
           <label class="form-label">Quartos</label>
           <input type="number" min="0" name="quartos" class="form-control">
         </div>
-        <div class="col-md-1">
+        <div class="col-md-1 campo-imovel-novo">
           <label class="form-label">Banheiros</label>
           <input type="number" min="0" name="banheiros" class="form-control">
         </div>
-        <div class="col-md-3">
+        <div class="col-md-3 campo-imovel-novo">
           <label class="form-label">IPTU (R$)</label>
           <input type="number" step="0.01" min="0" name="iptu" class="form-control">
         </div>
-        <div class="col-md-3">
+        <div class="col-md-3 campo-imovel-novo">
           <label class="form-label">Condomínio (R$)</label>
           <input type="number" step="0.01" min="0" name="condominio" class="form-control">
         </div>
@@ -203,6 +217,13 @@
     </form>
   </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var sel = document.getElementById('tipo_item_novo');
+  if (sel) atualizarSecoesTipoItem(sel.value, 'novo');
+});
+</script>
 
 <div class="card">
   <div class="card-header bg-dark text-white">

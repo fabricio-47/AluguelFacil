@@ -11,8 +11,10 @@ from permissions import requer_permissao, tem_permissao, VER_EQUIPAMENTOS, GEREN
 from estoque import registrar_movimentacao
 from planos import verificar_limite
 from auditoria import registrar_auditoria
+from modulos import MODULOS, MODULOS_INVENTARIO, tem_modulo_ativo, gate_algum_modulo
 
 equipamentos_bp = Blueprint("equipamentos", __name__, url_prefix="/equipamentos")
+equipamentos_bp.before_request(gate_algum_modulo(MODULOS_INVENTARIO))
 
 # ======================
 # Helpers
@@ -37,7 +39,11 @@ def _campos_formulario(form):
     if status not in STATUS_EDITAVEIS:
         status = "disponivel"
     disponivel = status == "disponivel"
+    tipo_item = (form.get("tipo_item") or "equipamento").strip()
+    if tipo_item not in MODULOS_INVENTARIO:
+        tipo_item = "equipamento"
     return {
+        "tipo_item": tipo_item,
         "categoria_id": form.get("categoria_id", type=int) or None,
         "codigo_interno": (form.get("codigo_interno") or "").strip().upper() or None,
         "sku": (form.get("sku") or "").strip() or None,
@@ -96,6 +102,17 @@ def listar_equipamentos():
             flash("Nome do equipamento é obrigatório.", "warning")
             return redirect(url_for("equipamentos.listar_equipamentos"))
 
+        if not tem_modulo_ativo(cur, current_user.company_id, campos["tipo_item"]):
+            cur.close()
+            conn.close()
+            nome_modulo = MODULOS.get(campos["tipo_item"], {}).get("nome", campos["tipo_item"])
+            flash(
+                f"O módulo \"{nome_modulo}\" não está ativo para sua empresa. "
+                f"Fale com o administrador da conta para contratar.",
+                "warning",
+            )
+            return redirect(url_for("equipamentos.listar_equipamentos"))
+
         limite = verificar_limite(cur, current_user.company_id, "limite_equipamentos", "equipment_items")
         if not limite["dentro_do_limite"]:
             cur.close()
@@ -129,13 +146,15 @@ def listar_equipamentos():
                     numero_serie, ano, descricao, valor_compra, valor_diaria, valor_semanal,
                     valor_quinzenal, valor_mensal, valor_hora, caucao, status, quantidade_disponivel,
                     placa, chassi, renavam, quilometragem, combustivel, cambio,
-                    endereco_completo, bairro, cidade, metro_quadrado, quartos, banheiros, tipo_imovel, iptu, condominio
+                    endereco_completo, bairro, cidade, metro_quadrado, quartos, banheiros, tipo_imovel, iptu, condominio,
+                    tipo_item
                 ) VALUES (%(company_id)s,%(branch_id)s,%(categoria_id)s,%(codigo_interno)s,%(sku)s,%(codigo_barras)s,%(nome)s,%(marca)s,
                     %(modelo)s,%(numero_serie)s,%(ano)s,%(descricao)s,%(valor_compra)s,%(valor_diaria)s,
                     %(valor_semanal)s,%(valor_quinzenal)s,%(valor_mensal)s,%(valor_hora)s,%(caucao)s,
                     %(status)s,%(quantidade_disponivel)s,
                     %(placa)s,%(chassi)s,%(renavam)s,%(quilometragem)s,%(combustivel)s,%(cambio)s,
-                    %(endereco_completo)s,%(bairro)s,%(cidade)s,%(metro_quadrado)s,%(quartos)s,%(banheiros)s,%(tipo_imovel)s,%(iptu)s,%(condominio)s)
+                    %(endereco_completo)s,%(bairro)s,%(cidade)s,%(metro_quadrado)s,%(quartos)s,%(banheiros)s,%(tipo_imovel)s,%(iptu)s,%(condominio)s,
+                    %(tipo_item)s)
                 RETURNING id
             """, campos)
             equipamento_id = cur.fetchone()["id"]
@@ -161,14 +180,16 @@ def listar_equipamentos():
 
         return redirect(url_for("equipamentos.listar_equipamentos"))
 
+    tipos_liberados = [s for s in MODULOS_INVENTARIO if tem_modulo_ativo(cur, current_user.company_id, s)]
+
     cur.execute("""
         SELECT ei.id, ei.codigo_interno, ei.nome, ei.marca, ei.modelo, ei.ano, ei.status,
-               ei.foto, ei.documento_arquivo, ec.nome AS categoria_nome, ei.placa, ei.tipo_imovel
+               ei.foto, ei.documento_arquivo, ec.nome AS categoria_nome, ei.placa, ei.tipo_imovel, ei.tipo_item
         FROM equipment_items ei
         LEFT JOIN equipment_categories ec ON ec.id = ei.categoria_id
-        WHERE ei.company_id = %s
+        WHERE ei.company_id = %s AND ei.tipo_item = ANY(%s)
         ORDER BY ei.nome
-    """, (current_user.company_id,))
+    """, (current_user.company_id, tipos_liberados))
     equipamentos = cur.fetchall()
 
     cur.execute("SELECT id, nome FROM equipment_categories WHERE company_id = %s ORDER BY nome", (current_user.company_id,))
@@ -176,7 +197,13 @@ def listar_equipamentos():
 
     cur.close()
     conn.close()
-    return render_template("equipamentos.html", equipamentos=equipamentos, categorias=categorias)
+    return render_template(
+        "equipamentos.html",
+        equipamentos=equipamentos,
+        categorias=categorias,
+        tipos_liberados=tipos_liberados,
+        modulos_info=MODULOS,
+    )
 
 # ======================
 # Editar equipamento
@@ -192,20 +219,38 @@ def editar_equipamento(id):
         campos = _campos_formulario(request.form)
         if not campos["nome"]:
             flash("Nome do equipamento é obrigatório.", "warning")
+        elif not tem_modulo_ativo(cur, current_user.company_id, campos["tipo_item"]):
+            nome_modulo = MODULOS.get(campos["tipo_item"], {}).get("nome", campos["tipo_item"])
+            flash(
+                f"O módulo \"{nome_modulo}\" não está ativo para sua empresa. "
+                f"Fale com o administrador da conta para contratar.",
+                "warning",
+            )
         else:
             try:
                 cur.execute(
-                    "SELECT status FROM equipment_items WHERE id=%s AND company_id=%s",
+                    "SELECT status, tipo_item FROM equipment_items WHERE id=%s AND company_id=%s",
                     (id, current_user.company_id),
                 )
-                status_anterior_row = cur.fetchone()
-                if not status_anterior_row:
+                item_atual = cur.fetchone()
+                if not item_atual:
                     conn.rollback()
                     cur.close()
                     conn.close()
                     flash("Equipamento não encontrado.", "danger")
                     return redirect(url_for("equipamentos.listar_equipamentos"))
-                status_anterior = status_anterior_row["status"]
+                status_anterior = item_atual["status"]
+                if not tem_modulo_ativo(cur, current_user.company_id, item_atual["tipo_item"]):
+                    conn.rollback()
+                    cur.close()
+                    conn.close()
+                    nome_modulo = MODULOS.get(item_atual["tipo_item"], {}).get("nome", item_atual["tipo_item"])
+                    flash(
+                        f"O módulo \"{nome_modulo}\" não está mais ativo para sua empresa -- "
+                        f"esse item não pode ser editado. Fale com o administrador da conta.",
+                        "warning",
+                    )
+                    return redirect(url_for("equipamentos.listar_equipamentos"))
 
                 campos["id"] = id
                 campos["company_id"] = current_user.company_id
@@ -223,7 +268,7 @@ def editar_equipamento(id):
                         endereco_completo=%(endereco_completo)s, bairro=%(bairro)s, cidade=%(cidade)s,
                         metro_quadrado=%(metro_quadrado)s,
                         quartos=%(quartos)s, banheiros=%(banheiros)s, tipo_imovel=%(tipo_imovel)s,
-                        iptu=%(iptu)s, condominio=%(condominio)s
+                        iptu=%(iptu)s, condominio=%(condominio)s, tipo_item=%(tipo_item)s
                     WHERE id=%(id)s AND company_id=%(company_id)s
                 """, campos)
 
@@ -256,7 +301,7 @@ def editar_equipamento(id):
         SELECT ei.id, ei.categoria_id, ei.codigo_interno, ei.sku, ei.codigo_barras, ei.nome, ei.marca, ei.modelo,
                ei.numero_serie, ei.ano, ei.descricao, ei.foto, ei.documento_arquivo,
                ei.valor_compra, ei.valor_diaria, ei.valor_semanal, ei.valor_quinzenal, ei.valor_mensal, ei.valor_hora,
-               ei.caucao, ei.status, ei.branch_id, b.nome AS filial_nome,
+               ei.caucao, ei.status, ei.branch_id, b.nome AS filial_nome, ei.tipo_item,
                ei.placa, ei.chassi, ei.renavam, ei.quilometragem, ei.combustivel, ei.cambio,
                ei.endereco_completo, ei.bairro, ei.cidade, ei.metro_quadrado, ei.quartos, ei.banheiros, ei.tipo_imovel, ei.iptu, ei.condominio
         FROM equipment_items ei
@@ -274,6 +319,8 @@ def editar_equipamento(id):
     cur.execute("SELECT id, nome FROM equipment_categories WHERE company_id=%s ORDER BY nome", (current_user.company_id,))
     categorias = cur.fetchall()
 
+    tipos_liberados = [s for s in MODULOS_INVENTARIO if tem_modulo_ativo(cur, current_user.company_id, s)]
+
     cur.close()
     conn.close()
     return render_template(
@@ -281,6 +328,8 @@ def editar_equipamento(id):
         equipamento=equipamento,
         categorias=categorias,
         status_editaveis=sorted(STATUS_EDITAVEIS),
+        tipos_liberados=tipos_liberados,
+        modulos_info=MODULOS,
     )
 
 # ======================

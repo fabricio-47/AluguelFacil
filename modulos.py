@@ -87,6 +87,38 @@ def tem_algum_inventario_ativo(cur, company_id, excluir_slug=None):
     return False
 
 
+def gate_algum_modulo(slugs):
+    """Como gate_modulo, mas libera se a empresa tiver QUALQUER UM dos slugs
+    ativo/trial valido -- usado por blueprints que atendem varios modulos ao
+    mesmo tempo na mesma tela (ex.: equipamentos/veiculos/imoveis, que dividem
+    a tabela equipment_items)."""
+    def _gate():
+        if not current_user.is_authenticated:
+            return None
+        if getattr(current_user, "eh_admin_plataforma", False):
+            return None
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+        try:
+            liberado = any(tem_modulo_ativo(cur, current_user.company_id, s) for s in slugs)
+        finally:
+            cur.close()
+            conn.close()
+
+        if not liberado:
+            nomes = ", ".join(MODULOS.get(s, {}).get("nome", s) for s in slugs)
+            flash(
+                f"Nenhum módulo de estoque contratado ({nomes}). "
+                f"Fale com o administrador da conta para contratar.",
+                "warning",
+            )
+            return redirect(url_for("dashboard.home"))
+        return None
+
+    return _gate
+
+
 def gate_modulo(slug):
     """Fabrica uma funcao pronta pra registrar via blueprint.before_request(...).
 
