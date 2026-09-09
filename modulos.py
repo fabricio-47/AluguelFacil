@@ -36,6 +36,12 @@ MODULOS = {
 
 TRIAL_DIAS = 7
 
+MODULOS_INVENTARIO = ("equipamentos", "veiculos", "imoveis")
+MODULOS_OPERACIONAIS = (
+    "locacoes", "financeiro", "crm", "manutencoes",
+    "entregas", "orcamentos", "relatorios", "assistente",
+)
+
 
 def tem_modulo_ativo(cur, company_id, modulo):
     """True se a empresa pode usar o modulo agora (ativo, ou trial dentro do prazo)."""
@@ -51,6 +57,34 @@ def tem_modulo_ativo(cur, company_id, modulo):
     if row["status"] == "trial":
         return row["trial_termina_em"] is None or row["trial_termina_em"] >= dt.datetime.utcnow()
     return False  # bloqueado, cancelado
+
+
+def sincronizar_modulos_operacionais(cur, company_id, status, trial_termina_em=None):
+    """Locacoes/Financeiro/CRM/Manutencoes/Entregas/Orcamentos/Relatorios/Assistente
+    vem de graca junto com qualquer modulo de estoque (equipamentos/veiculos/imoveis)
+    -- sem eles, o modulo de estoque nao serve pra nada sozinho. Chamar sempre que
+    um dos 3 modulos de estoque for ativado/receber trial/for bloqueado."""
+    for slug in MODULOS_OPERACIONAIS:
+        cur.execute("""
+            INSERT INTO company_modulos (company_id, modulo, status, trial_termina_em)
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT (company_id, modulo) DO UPDATE
+            SET status = EXCLUDED.status,
+                trial_termina_em = EXCLUDED.trial_termina_em,
+                updated_at = CURRENT_TIMESTAMP
+        """, (company_id, slug, status, trial_termina_em))
+
+
+def tem_algum_inventario_ativo(cur, company_id, excluir_slug=None):
+    """True se sobra pelo menos um dos 3 modulos de estoque ativo/trial valido
+    para a empresa, ignorando excluir_slug (usado ao bloquear um deles, pra saber
+    se ainda pode manter os modulos operacionais liberados por causa de outro)."""
+    for slug in MODULOS_INVENTARIO:
+        if slug == excluir_slug:
+            continue
+        if tem_modulo_ativo(cur, company_id, slug):
+            return True
+    return False
 
 
 def gate_modulo(slug):

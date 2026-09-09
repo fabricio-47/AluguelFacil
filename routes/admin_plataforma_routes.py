@@ -10,7 +10,7 @@ from permissions import requer_admin_plataforma
 from planos import PRECO_PLANO
 from text_utils import slugify
 from validators import validar_forca_senha
-from modulos import MODULOS
+from modulos import MODULOS, MODULOS_INVENTARIO, sincronizar_modulos_operacionais, tem_algum_inventario_ativo
 
 admin_plataforma_bp = Blueprint("admin_plataforma", __name__, url_prefix="/admin-plataforma")
 
@@ -315,8 +315,14 @@ def ativar_modulo_empresa(id, slug):
             VALUES (%s, %s, 'ativo', NULL)
             ON CONFLICT (company_id, modulo) DO UPDATE SET status='ativo', trial_termina_em=NULL
         """, (id, slug))
+
+        mensagem_extra = ""
+        if slug in MODULOS_INVENTARIO:
+            sincronizar_modulos_operacionais(cur, id, "ativo")
+            mensagem_extra = " Locações, Financeiro, CRM e os demais módulos operacionais foram liberados junto (vêm de graça com qualquer módulo de estoque)."
+
         conn.commit()
-        flash(f"Módulo \"{MODULOS[slug]['nome']}\" ativado manualmente (pagamento combinado por fora, sem cobrança automática ainda).", "success")
+        flash(f"Módulo \"{MODULOS[slug]['nome']}\" ativado manualmente (pagamento combinado por fora, sem cobrança automática ainda).{mensagem_extra}", "success")
     except Exception as e:
         conn.rollback()
         flash(f"Erro ao ativar módulo: {e}", "danger")
@@ -344,8 +350,14 @@ def trial_modulo_empresa(id, slug):
             VALUES (%s, %s, 'trial', %s)
             ON CONFLICT (company_id, modulo) DO UPDATE SET status='trial', trial_termina_em=%s
         """, (id, slug, trial_termina_em, trial_termina_em))
+
+        mensagem_extra = ""
+        if slug in MODULOS_INVENTARIO:
+            sincronizar_modulos_operacionais(cur, id, "trial", trial_termina_em)
+            mensagem_extra = " Os módulos operacionais (Locações, Financeiro, CRM etc.) também entraram em teste grátis junto."
+
         conn.commit()
-        flash(f"Teste grátis de 7 dias concedido para \"{MODULOS[slug]['nome']}\" (termina em {trial_termina_em.strftime('%d/%m/%Y')}).", "success")
+        flash(f"Teste grátis de 7 dias concedido para \"{MODULOS[slug]['nome']}\" (termina em {trial_termina_em.strftime('%d/%m/%Y')}).{mensagem_extra}", "success")
     except Exception as e:
         conn.rollback()
         flash(f"Erro ao conceder teste grátis: {e}", "danger")
@@ -371,8 +383,14 @@ def bloquear_modulo_empresa(id, slug):
             VALUES (%s, %s, 'bloqueado')
             ON CONFLICT (company_id, modulo) DO UPDATE SET status='bloqueado'
         """, (id, slug))
+
+        mensagem_extra = ""
+        if slug in MODULOS_INVENTARIO and not tem_algum_inventario_ativo(cur, id, excluir_slug=slug):
+            sincronizar_modulos_operacionais(cur, id, "bloqueado")
+            mensagem_extra = " Como não sobrou nenhum módulo de estoque ativo, os módulos operacionais também foram bloqueados."
+
         conn.commit()
-        flash(f"Módulo \"{MODULOS[slug]['nome']}\" bloqueado.", "info")
+        flash(f"Módulo \"{MODULOS[slug]['nome']}\" bloqueado.{mensagem_extra}", "info")
     except Exception as e:
         conn.rollback()
         flash(f"Erro ao bloquear módulo: {e}", "danger")
