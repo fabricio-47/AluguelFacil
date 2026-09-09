@@ -1,0 +1,38 @@
+name: Diagnostico gate tipo_item (temporario)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar psycopg2
+        run: pip install psycopg2-binary --break-system-packages || pip install psycopg2-binary
+      - name: Rodar diagnostico
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_BACKUP }}
+        run: |
+          python3 << 'PYEOF'
+          import psycopg2, psycopg2.extras, os, datetime as dt
+          conn = psycopg2.connect(os.environ["DATABASE_URL"])
+          cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+          cur.execute("SELECT id FROM companies WHERE nome = 'Empresa Teste Gate'")
+          row = cur.fetchone()
+          print("company:", dict(row) if row else None)
+          if not row:
+              exit()
+          company_id = row["id"]
+
+          cur.execute("SELECT modulo, status, trial_termina_em FROM company_modulos WHERE company_id=%s ORDER BY modulo", (company_id,))
+          rows = cur.fetchall()
+          agora = dt.datetime.utcnow()
+          print("agora (utc):", agora)
+          for r in rows:
+              print(dict(r), "-- tipo trial_termina_em:", type(r["trial_termina_em"]), "tzinfo:", getattr(r["trial_termina_em"], "tzinfo", None))
+
+          cur.close()
+          conn.close()
+          PYEOF
