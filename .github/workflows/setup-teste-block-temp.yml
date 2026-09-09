@@ -1,0 +1,39 @@
+name: Setup teste bloqueio veiculos (temporario)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar psycopg2
+        run: pip install psycopg2-binary --break-system-packages || pip install psycopg2-binary
+      - name: Rodar setup
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_BACKUP }}
+        run: |
+          python3 << 'PYEOF'
+          import psycopg2, psycopg2.extras, os
+          conn = psycopg2.connect(os.environ["DATABASE_URL"])
+          cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+          cur.execute("SELECT id FROM companies WHERE nome = 'Empresa Teste Gate Block'")
+          row = cur.fetchone()
+          print("company:", dict(row) if row else None)
+          company_id = row["id"]
+
+          cur.execute("""
+              UPDATE company_modulos SET status='bloqueado'
+              WHERE company_id=%s AND modulo='veiculos'
+          """, (company_id,))
+          print("veiculos bloqueado, rowcount:", cur.rowcount)
+
+          cur.execute("SELECT modulo, status FROM company_modulos WHERE company_id=%s ORDER BY modulo", (company_id,))
+          print("estado final:", cur.fetchall())
+
+          conn.commit()
+          cur.close()
+          conn.close()
+          PYEOF
