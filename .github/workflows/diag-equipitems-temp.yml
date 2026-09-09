@@ -1,0 +1,53 @@
+name: Diagnostico equipment_items por tipo (temporario)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Instalar psycopg2
+        run: pip install psycopg2-binary --break-system-packages || pip install psycopg2-binary
+      - name: Rodar diagnostico
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_BACKUP }}
+        run: |
+          python3 << 'PYEOF'
+          import psycopg2, psycopg2.extras, os
+          conn = psycopg2.connect(os.environ["DATABASE_URL"])
+          cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+          cur.execute("SELECT id, nome FROM companies ORDER BY id")
+          print("=== COMPANIES ===")
+          for c in cur.fetchall():
+              print(dict(c))
+
+          cur.execute("""
+              SELECT id, company_id, nome,
+                     placa, chassi, renavam,
+                     endereco_completo, quartos, tipo_imovel,
+                     categoria_id
+              FROM equipment_items
+              ORDER BY company_id, id
+          """)
+          print("\n=== EQUIPMENT_ITEMS (todos, com campos de veiculo/imovel) ===")
+          rows = cur.fetchall()
+          print("total:", len(rows))
+          for r in rows:
+              print(dict(r))
+
+          print("\n=== RESUMO POR TIPO INFERIDO ===")
+          n_veic = sum(1 for r in rows if r["placa"] or r["chassi"] or r["renavam"])
+          n_imovel = sum(1 for r in rows if r["endereco_completo"] or r["quartos"] or r["tipo_imovel"])
+          n_equip = len(rows) - n_veic - n_imovel
+          print({"veiculo": n_veic, "imovel": n_imovel, "equipamento_resto": n_equip})
+
+          cur.execute("SELECT id, company_id, nome FROM equipment_categories ORDER BY company_id, id")
+          print("\n=== EQUIPMENT_CATEGORIES ===")
+          for r in cur.fetchall():
+              print(dict(r))
+
+          cur.close()
+          conn.close()
+          PYEOF
