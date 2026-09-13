@@ -6,6 +6,8 @@ from psycopg2.extras import RealDictCursor
 from werkzeug.security import generate_password_hash
 
 from database import get_db_connection
+import json
+
 from permissions import (
     requer_permissao, tem_permissao, VER_USUARIOS, GERENCIAR_USUARIOS,
     CARGOS_CUSTOMIZAVEIS, GRUPOS_PERMISSOES, LABEL_PERMISSAO, PERMISSOES_POR_ROLE,
@@ -81,8 +83,11 @@ def listar_usuarios():
     cur = conn.cursor(cursor_factory=RealDictCursor)
     try:
         cur.execute("""
-            SELECT id, username, email, role, created_at
-            FROM usuarios WHERE company_id=%s ORDER BY username ASC
+            SELECT u.id, u.username, u.email, u.role, u.created_at,
+                   (pcu.usuario_id IS NOT NULL) AS acesso_personalizado
+            FROM usuarios u
+            LEFT JOIN permissoes_customizadas_usuario pcu ON pcu.usuario_id = u.id
+            WHERE u.company_id=%s ORDER BY u.username ASC
         """, (current_user.company_id,))
         usuarios = cur.fetchall()
 
@@ -119,6 +124,12 @@ def listar_usuarios():
 @login_required
 @requer_permissao(GERENCIAR_USUARIOS)
 def editar_usuario(id):
+    # Só quem administra a conta pode mexer no acesso individual do usuário
+    # (mesma regra usada pra matriz por cargo) -- evita que um "gerente" com
+    # permissão de gerenciar usuários se auto-promova mudando isso.
+    pode_editar_permissoes = current_user.role in ("super_admin", "admin_locadora")
+    todas_permissoes = {perm for _, perms in GRUPOS_PERMISSOES for perm in perms}
+
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     try:
@@ -137,6 +148,20 @@ def editar_usuario(id):
 
             try:
                 cur.execute("UPDATE usuarios SET role=%s WHERE id=%s", (role, id))
+
+                if pode_editar_permissoes:
+                    usar_personalizado = request.form.get("usar_permissoes_individuais") == "1"
+                    if usar_personalizado:
+                        marcadas = [p for p in request.form.getlist("perm_individual") if p in todas_permissoes]
+                        cur.execute("""
+                            INSERT INTO permissoes_customizadas_usuario (usuario_id, permissoes, updated_at)
+                            VALUES (%s, %s, NOW())
+                            ON CONFLICT (usuario_id) DO UPDATE SET
+                                permissoes = EXCLUDED.permissoes, updated_at = NOW()
+                        """, (id, json.dumps(marcadas)))
+                    else:
+                        cur.execute("DELETE FROM permissoes_customizadas_usuario WHERE usuario_id=%s", (id,))
+
                 conn.commit()
                 flash("Usuário atualizado com sucesso!", "success")
                 return redirect(url_for("usuarios.listar_usuarios"))
@@ -144,7 +169,30 @@ def editar_usuario(id):
                 conn.rollback()
                 flash(f"Erro ao atualizar usuário: {e}", "danger")
 
-        return render_template("editar_usuario.html", usuario=usuario, roles=ROLES_DISPONIVEIS)
+        override = None
+        if pode_editar_permissoes:
+            cur.execute("SELECT permissoes FROM permissoes_customizadas_usuario WHERE usuario_id=%s", (id,))
+            row = cur.fetchone()
+            override = set(row["permissoes"]) if row else None
+
+        cur.execute(
+            "SELECT role, permissoes FROM permissoes_customizadas WHERE company_id=%s",
+            (current_user.company_id,),
+        )
+        customizadas_por_cargo = {r["role"]: set(r["permissoes"]) for r in cur.fetchall()}
+        permissoes_do_cargo = customizadas_por_cargo.get(usuario["role"], set(PERMISSOES_POR_ROLE.get(usuario["role"], ())))
+
+        # O que aparece marcado no formulário: o override, se existir, senão o padrão do cargo dele.
+        permissoes_marcadas = override if override is not None else permissoes_do_cargo
+
+        return render_template(
+            "editar_usuario.html", usuario=usuario, roles=ROLES_DISPONIVEIS,
+            pode_editar_permissoes=pode_editar_permissoes,
+            usa_permissoes_individuais=(override is not None),
+            grupos_permissoes=GRUPOS_PERMISSOES,
+            label_permissao=LABEL_PERMISSAO,
+            permissoes_marcadas=permissoes_marcadas,
+        )
     finally:
         cur.close()
         conn.close()

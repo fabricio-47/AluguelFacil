@@ -187,12 +187,47 @@ def _permissoes_do_role(role, company_id):
     return resultado
 
 
+def _permissoes_individuais_do_usuario(usuario_id):
+    """None = usuário não tem override individual (usa o cargo normalmente).
+    Um set (mesmo vazio) = override ativo, substitui totalmente o do cargo."""
+    if usuario_id is None:
+        return None
+
+    cache_attr = f"_permissoes_individuais_cache_{usuario_id}"
+    if hasattr(g, cache_attr):
+        return getattr(g, cache_attr)
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "SELECT permissoes FROM permissoes_customizadas_usuario WHERE usuario_id=%s",
+            (usuario_id,),
+        )
+        row = cur.fetchone()
+    finally:
+        cur.close()
+        conn.close()
+
+    resultado = set(row["permissoes"]) if row is not None else None
+    setattr(g, cache_attr, resultado)
+    return resultado
+
+
 def tem_permissao(permissao):
     if not current_user.is_authenticated:
         return False
-    permissoes = _permissoes_do_role(
-        getattr(current_user, "role", None), getattr(current_user, "company_id", None)
-    )
+
+    role = getattr(current_user, "role", None)
+    if role in ROLES_ACESSO_TOTAL:
+        return True  # super_admin/admin_locadora sempre passam, override individual não se aplica a eles
+
+    usuario_id = getattr(current_user, "id", None)
+    individuais = _permissoes_individuais_do_usuario(int(usuario_id) if usuario_id is not None else None)
+    if individuais is not None:
+        return permissao in individuais
+
+    permissoes = _permissoes_do_role(role, getattr(current_user, "company_id", None))
     return permissoes is None or permissao in permissoes
 
 

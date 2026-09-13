@@ -24,6 +24,58 @@
           {% endfor %}
         </select>
       </div>
+
+      {% if pode_editar_permissoes %}
+      {% if usuario.role in ("super_admin", "admin_locadora") %}
+      <div class="alert alert-secondary">
+        Esse cargo tem acesso total ao sistema por padrão — personalizar o acesso individual aqui não tem efeito
+        enquanto o usuário estiver nesse cargo.
+      </div>
+      {% endif %}
+
+      <div class="form-check form-switch mb-3">
+        <input class="form-check-input" type="checkbox" role="switch" id="usar_individual"
+               name="usar_permissoes_individuais" value="1" {% if usa_permissoes_individuais %}checked{% endif %}
+               onchange="document.getElementById('grade_individual').classList.toggle('d-none', !this.checked)">
+        <label class="form-check-label" for="usar_individual">
+          Personalizar o acesso deste usuário (diferente do cargo <strong>{{ usuario.role }}</strong>)
+        </label>
+      </div>
+
+      <div id="grade_individual" class="{% if not usa_permissoes_individuais %}d-none{% endif %} mb-3">
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered align-middle">
+            <thead>
+              <tr>
+                <th>Permissão</th>
+                <th class="text-center">Acesso</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for nome_grupo, permissoes_do_grupo in grupos_permissoes %}
+              <tr class="table-light">
+                <td colspan="2"><strong>{{ nome_grupo }}</strong></td>
+              </tr>
+              {% for permissao in permissoes_do_grupo %}
+              <tr>
+                <td>{{ label_permissao[permissao] }}</td>
+                <td class="text-center">
+                  <input type="checkbox" class="form-check-input" name="perm_individual" value="{{ permissao }}"
+                         {% if permissao in permissoes_marcadas %}checked{% endif %}>
+                </td>
+              </tr>
+              {% endfor %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <small class="text-muted">
+          Já vem marcado com o que o cargo dele dá hoje. Desmarque a chave acima a qualquer momento pra voltar
+          a usar só o padrão do cargo.
+        </small>
+      </div>
+      {% endif %}
+
       <button type="submit" class="btn btn-primary">Salvar</button>
     </form>
   </div>

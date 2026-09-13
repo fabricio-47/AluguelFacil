@@ -115,7 +115,10 @@
           <tr>
             <td>{{ u.username }}</td>
             <td>{{ u.email }}</td>
-            <td>{{ u.role }}</td>
+            <td>
+              {{ u.role }}
+              {% if u.acesso_personalizado %}<span class="badge bg-info text-dark">Personalizado</span>{% endif %}
+            </td>
             <td>{{ u.created_at }}</td>
             <td>
               <a href="{{ url_for('usuarios.editar_usuario', id=u.id) }}" class="btn btn-sm btn-outline-primary">
