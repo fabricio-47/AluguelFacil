@@ -18,6 +18,14 @@ jobs:
           rows = cur.fetchall()
           print("empresas encontradas:", rows)
           for (cid,) in rows:
+              cur.execute("""
+                  DELETE FROM suporte_mensagens WHERE ticket_id IN (
+                      SELECT id FROM suporte_tickets WHERE company_id=%s
+                  )
+              """, (cid,))
+              cur.execute("DELETE FROM suporte_tickets WHERE company_id=%s", (cid,))
+              cur.execute("DELETE FROM clientes WHERE company_id=%s", (cid,))
+              cur.execute("DELETE FROM branches WHERE company_id=%s", (cid,))
               cur.execute("DELETE FROM company_modulos WHERE company_id=%s", (cid,))
               cur.execute("DELETE FROM usuarios WHERE company_id=%s", (cid,))
               cur.execute("DELETE FROM companies WHERE id=%s", (cid,))
