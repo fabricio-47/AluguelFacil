@@ -269,6 +269,21 @@ def upload_fotos(checklist_id):
 @login_required
 @requer_permissao(VER_LOCACOES)
 def serve_foto(filename):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT cf.id
+        FROM checklist_fotos cf
+        JOIN checklists ck ON ck.id = cf.checklist_id
+        JOIN locacoes l ON l.id = ck.locacao_id
+        WHERE cf.arquivo = %s AND l.company_id = %s
+    """, (filename, current_user.company_id))
+    foto = cur.fetchone()
+    cur.close()
+    conn.close()
+    if not foto:
+        abort(404)
+
     pasta = os.path.join(current_app.config["UPLOAD_FOLDER"], "checklists")
     return send_from_directory(pasta, filename)
 
