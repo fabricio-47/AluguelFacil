@@ -21,22 +21,35 @@ def login():
         conn = get_db_connection()
         cur = conn.cursor(cursor_factory=RealDictCursor)
         try:
+            # O mesmo e-mail pode existir em mais de uma empresa (não há
+            # constraint de unicidade em clientes.email). Por isso checamos
+            # a senha contra TODOS os candidatos, em vez de pegar o
+            # primeiro que o banco devolver — do contrário o login falharia
+            # sempre para um dos dois clientes, ou pior, um poderia acabar
+            # autenticado na conta errada se as senhas coincidissem.
             cur.execute("SELECT id, senha FROM clientes WHERE email=%s", (email,))
-            cliente = cur.fetchone()
+            candidatos = cur.fetchall()
         finally:
             cur.close()
             conn.close()
 
-        if not cliente or not cliente["senha"]:
+        candidatos_com_senha = [c for c in candidatos if c["senha"]]
+        if not candidatos_com_senha:
             flash("Cliente não encontrado ou ainda sem senha definida. Faça seu primeiro acesso.", "info")
             return redirect(url_for("portal.primeiro_acesso"))
 
-        if check_password_hash(cliente["senha"], senha):
-            login_cliente(cliente["id"])
+        corresponde = [c for c in candidatos_com_senha if check_password_hash(c["senha"], senha)]
+        if len(corresponde) == 1:
+            login_cliente(corresponde[0]["id"])
             flash("Login efetuado!", "success")
             return redirect(url_for("portal.dashboard"))
-
-        flash("E-mail ou senha incorretos.", "danger")
+        elif len(corresponde) > 1:
+            # Esse e-mail existe em mais de uma empresa com a mesma senha.
+            # Não dá pra saber qual conta é a certa, e não devemos escolher
+            # uma arbitrariamente — bloqueia e orienta a buscar suporte.
+            flash("Esse e-mail está cadastrado em mais de uma empresa. Entre em contato com o suporte para acessarmos sua conta corretamente.", "danger")
+        else:
+            flash("E-mail ou senha incorretos.", "danger")
 
     return render_template("portal_login.html")
 
@@ -75,10 +88,17 @@ def primeiro_acesso():
                 "SELECT id FROM clientes WHERE email=%s AND (cpf=%s OR telefone=%s)",
                 (email, documento, documento),
             )
-            cliente = cur.fetchone()
-            if not cliente:
+            candidatos = cur.fetchall()
+            if not candidatos:
                 flash("Não encontramos um cliente com esses dados. Confira e-mail e CPF/telefone.", "danger")
                 return redirect(url_for("portal.primeiro_acesso"))
+            if len(candidatos) > 1:
+                # Mesmo e-mail + CPF/telefone cadastrados em mais de uma
+                # empresa — não dá pra saber pra qual conta essa senha é.
+                # Bloqueia em vez de definir a senha numa conta ao acaso.
+                flash("Esse e-mail está cadastrado em mais de uma empresa. Entre em contato com o suporte para definirmos sua senha corretamente.", "danger")
+                return redirect(url_for("portal.primeiro_acesso"))
+            cliente = candidatos[0]
 
             cur.execute("UPDATE clientes SET senha=%s WHERE id=%s", (generate_password_hash(senha), cliente["id"]))
             conn.commit()
