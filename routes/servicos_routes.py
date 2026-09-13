@@ -1,17 +1,43 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
-from flask_login import login_required
+from flask_login import login_required, current_user
 from database import get_db_connection
+from permissions import requer_permissao, tem_permissao, VER_LOCACOES, GERENCIAR_LOCACOES
 
 servicos_bp = Blueprint("servicos", __name__, url_prefix="/servicos")
 
-# Listar e cadastrar serviços de uma locação
+
+def _locacao_da_empresa(cur, locacao_id):
+    """Confere que a locacao pertence a empresa do usuario logado -- sem isso,
+    qualquer usuario logado (de qualquer empresa) conseguia ver/mexer em
+    servicos de uma locacao de outra empresa so sabendo o id na URL."""
+    cur.execute(
+        "SELECT id FROM locacoes WHERE id=%s AND company_id=%s",
+        (locacao_id, current_user.company_id),
+    )
+    return cur.fetchone() is not None
+
+
+# Listar e cadastrar servicos de uma locacao
 @servicos_bp.route("/<int:locacao_id>", methods=["GET", "POST"])
 @login_required
+@requer_permissao(VER_LOCACOES)
 def listar_servicos(locacao_id):
     conn = get_db_connection()
     cur = conn.cursor()
 
+    if not _locacao_da_empresa(cur, locacao_id):
+        cur.close()
+        conn.close()
+        flash("Locação não encontrada.", "warning")
+        return redirect(url_for("locacoes.listar_locacoes"))
+
     if request.method == "POST":
+        if not tem_permissao(GERENCIAR_LOCACOES):
+            cur.close()
+            conn.close()
+            flash("Você não tem permissão para adicionar serviços.", "danger")
+            return redirect(url_for("servicos.listar_servicos", locacao_id=locacao_id))
+
         descricao = request.form["descricao"].strip()
         valor = request.form.get("valor") or 0
 
@@ -31,7 +57,7 @@ def listar_servicos(locacao_id):
 
         return redirect(url_for("servicos.listar_servicos", locacao_id=locacao_id))
 
-    # GET: listar serviços da locação
+    # GET: listar servicos da locacao
     cur.execute("""
         SELECT s.id, s.descricao, s.valor, s.data_servico
         FROM servicos_locacao s
@@ -53,12 +79,20 @@ def listar_servicos(locacao_id):
     conn.close()
     return render_template("servicos_locacao.html", servicos=servicos, locacao=locacao, locacao_id=locacao_id)
 
-# Excluir um serviço
+# Excluir um servico
 @servicos_bp.route("/<int:locacao_id>/<int:servico_id>/excluir", methods=["POST"])
 @login_required
+@requer_permissao(GERENCIAR_LOCACOES)
 def excluir_servico(locacao_id, servico_id):
     conn = get_db_connection()
     cur = conn.cursor()
+
+    if not _locacao_da_empresa(cur, locacao_id):
+        cur.close()
+        conn.close()
+        flash("Locação não encontrada.", "warning")
+        return redirect(url_for("locacoes.listar_locacoes"))
+
     try:
         cur.execute("DELETE FROM servicos_locacao WHERE id=%s AND locacao_id=%s", (servico_id, locacao_id))
         conn.commit()

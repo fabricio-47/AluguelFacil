@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+﻿from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from psycopg2.extras import RealDictCursor
 
@@ -205,7 +205,10 @@ def concluir_tarefa(id):
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     try:
-        cur.execute("SELECT usuario_responsavel FROM tarefas_crm WHERE id=%s", (id,))
+        cur.execute(
+            "SELECT usuario_responsavel FROM tarefas_crm WHERE id=%s AND company_id=%s",
+            (id, current_user.company_id),
+        )
         row = cur.fetchone()
         if not row:
             flash("Tarefa não encontrada.", "warning")
@@ -215,7 +218,10 @@ def concluir_tarefa(id):
             flash("Você só pode concluir tarefas atribuídas a você.", "danger")
             return redirect(url_for("crm.tarefas"))
 
-        cur.execute("UPDATE tarefas_crm SET concluida=TRUE WHERE id=%s", (id,))
+        cur.execute(
+            "UPDATE tarefas_crm SET concluida=TRUE WHERE id=%s AND company_id=%s",
+            (id, current_user.company_id),
+        )
         conn.commit()
         flash("Tarefa concluída.", "success")
     except Exception as e:

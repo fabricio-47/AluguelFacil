@@ -1,4 +1,4 @@
-import datetime as dt
+﻿import datetime as dt
 import os
 import time
 
@@ -87,7 +87,7 @@ def novo(locacao_id, tipo):
         try:
             cur.execute("SELECT cliente_id, company_id FROM locacoes WHERE id=%s", (locacao_id,))
             locacao_ctx = cur.fetchone()
-            if not locacao_ctx:
+            if not locacao_ctx or locacao_ctx["company_id"] != current_user.company_id:
                 conn.rollback()
                 flash("Locação não encontrada.", "danger")
                 return redirect(url_for("locacoes.listar_locacoes"))
@@ -188,8 +188,8 @@ def novo(locacao_id, tipo):
         FROM locacoes l
         JOIN clientes c ON c.id = l.cliente_id
         JOIN equipment_items ei ON ei.id = l.equipment_item_id
-        WHERE l.id = %s
-    """, (locacao_id,))
+        WHERE l.id = %s AND l.company_id = %s
+    """, (locacao_id, current_user.company_id))
     locacao = cur.fetchone()
     if not locacao:
         cur.close()
@@ -215,7 +215,12 @@ def novo(locacao_id, tipo):
 def upload_fotos(checklist_id):
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("SELECT locacao_id, tipo FROM checklists WHERE id=%s", (checklist_id,))
+    cur.execute("""
+        SELECT ck.locacao_id, ck.tipo
+        FROM checklists ck
+        JOIN locacoes l ON l.id = ck.locacao_id
+        WHERE ck.id=%s AND l.company_id=%s
+    """, (checklist_id, current_user.company_id))
     checklist = cur.fetchone()
     if not checklist:
         cur.close()
@@ -283,8 +288,8 @@ def comparacao(locacao_id):
         FROM locacoes l
         JOIN clientes c ON c.id = l.cliente_id
         JOIN equipment_items ei ON ei.id = l.equipment_item_id
-        WHERE l.id = %s
-    """, (locacao_id,))
+        WHERE l.id = %s AND l.company_id = %s
+    """, (locacao_id, current_user.company_id))
     locacao = cur.fetchone()
     if not locacao:
         cur.close()

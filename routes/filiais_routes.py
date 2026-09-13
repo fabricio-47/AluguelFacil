@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+﻿from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 
 from database import get_db_connection
@@ -91,7 +91,14 @@ def editar_filial(id):
             flash("Nome da filial é obrigatório.", "warning")
         else:
             try:
-                cur.execute("UPDATE branches SET nome=%s, endereco=%s WHERE id=%s", (nome, endereco, id))
+                cur.execute(
+                    "UPDATE branches SET nome=%s, endereco=%s WHERE id=%s AND company_id=%s",
+                    (nome, endereco, id, current_user.company_id),
+                )
+                if cur.rowcount == 0:
+                    conn.rollback()
+                    flash("Filial não encontrada.", "warning")
+                    return redirect(url_for("filiais.listar_filiais"))
                 conn.commit()
                 flash("Filial atualizada com sucesso!", "success")
                 return redirect(url_for("filiais.listar_filiais"))
@@ -99,11 +106,13 @@ def editar_filial(id):
                 conn.rollback()
                 flash(f"Erro ao atualizar filial: {e}", "danger")
 
-    cur.execute("SELECT id, nome, endereco FROM branches WHERE id=%s", (id,))
+    cur.execute(
+        "SELECT id, nome, endereco FROM branches WHERE id=%s AND company_id=%s",
+        (id, current_user.company_id),
+    )
     filial = cur.fetchone()
     cur.close()
     conn.close()
-
     if not filial:
         flash("Filial não encontrada.", "warning")
         return redirect(url_for("filiais.listar_filiais"))
@@ -125,8 +134,8 @@ def transferir_equipamento(equipamento_id):
         SELECT ei.id, ei.nome, ei.codigo_interno, ei.branch_id, b.nome AS filial_atual_nome
         FROM equipment_items ei
         LEFT JOIN branches b ON b.id = ei.branch_id
-        WHERE ei.id=%s
-    """, (equipamento_id,))
+        WHERE ei.id=%s AND ei.company_id=%s
+    """, (equipamento_id, current_user.company_id))
     equipamento = cur.fetchone()
     if not equipamento:
         cur.close()
@@ -138,7 +147,10 @@ def transferir_equipamento(equipamento_id):
         nova_filial_id = request.form.get("branch_id", type=int)
         motivo = (request.form.get("motivo") or "").strip() or None
 
-        cur.execute("SELECT nome FROM branches WHERE id=%s", (nova_filial_id,))
+        cur.execute(
+            "SELECT nome FROM branches WHERE id=%s AND company_id=%s",
+            (nova_filial_id, current_user.company_id),
+        )
         nova_filial = cur.fetchone()
         if not nova_filial_id or not nova_filial:
             cur.close()
@@ -147,7 +159,10 @@ def transferir_equipamento(equipamento_id):
             return redirect(url_for("filiais.transferir_equipamento", equipamento_id=equipamento_id))
 
         try:
-            cur.execute("UPDATE equipment_items SET branch_id=%s WHERE id=%s", (nova_filial_id, equipamento_id))
+            cur.execute(
+                "UPDATE equipment_items SET branch_id=%s WHERE id=%s AND company_id=%s",
+                (nova_filial_id, equipamento_id, current_user.company_id),
+            )
             descricao = f"Transferido de '{equipamento['filial_atual_nome'] or 'sem filial'}' para '{nova_filial['nome']}'"
             if motivo:
                 descricao += f" — {motivo}"
@@ -163,7 +178,10 @@ def transferir_equipamento(equipamento_id):
 
         return redirect(url_for("equipamentos.editar_equipamento", id=equipamento_id))
 
-    cur.execute("SELECT id, nome FROM branches WHERE id != %s ORDER BY nome", (equipamento["branch_id"] or 0,))
+    cur.execute(
+        "SELECT id, nome FROM branches WHERE id != %s AND company_id=%s ORDER BY nome",
+        (equipamento["branch_id"] or 0, current_user.company_id),
+    )
     outras_filiais = cur.fetchall()
     cur.close()
     conn.close()

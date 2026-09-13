@@ -1,4 +1,4 @@
-import datetime as dt
+﻿import datetime as dt
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
@@ -63,16 +63,29 @@ def listar_manutencoes():
             flash("Equipamento, tipo e descrição do problema são obrigatórios.", "warning")
             return redirect(url_for("manutencoes.listar_manutencoes"))
 
+        # Confere que o equipamento e da propria empresa ANTES de abrir a
+        # manutencao -- sem isso, dava pra abrir manutencao (e mudar status)
+        # de equipamento de outra empresa so mandando o id certo no form.
+        cur.execute(
+            "SELECT id FROM equipment_items WHERE id=%s AND company_id=%s",
+            (equipment_item_id, current_user.company_id),
+        )
+        if not cur.fetchone():
+            cur.close()
+            conn.close()
+            flash("Equipamento não encontrado.", "warning")
+            return redirect(url_for("manutencoes.listar_manutencoes"))
+
         try:
             cur.execute("""
                 INSERT INTO manutencoes (
-                    equipment_item_id, tipo, problema, tecnico_id, data_conclusao_prevista, fornecedor
-                ) VALUES (%s,%s,%s,%s,%s,%s)
-            """, (equipment_item_id, tipo, problema, tecnico_id, data_conclusao_prevista, fornecedor))
+                    company_id, equipment_item_id, tipo, problema, tecnico_id, data_conclusao_prevista, fornecedor
+                ) VALUES (%s,%s,%s,%s,%s,%s,%s)
+            """, (current_user.company_id, equipment_item_id, tipo, problema, tecnico_id, data_conclusao_prevista, fornecedor))
 
             cur.execute(
-                "UPDATE equipment_items SET status='manutencao', quantidade_disponivel=0 WHERE id=%s",
-                (equipment_item_id,),
+                "UPDATE equipment_items SET status='manutencao', quantidade_disponivel=0 WHERE id=%s AND company_id=%s",
+                (equipment_item_id, current_user.company_id),
             )
             registrar_movimentacao(cur, equipment_item_id, "manutencao", f"Manutenção aberta: {problema}", int(current_user.id))
 
@@ -94,14 +107,21 @@ def listar_manutencoes():
         FROM manutencoes m
         JOIN equipment_items ei ON ei.id = m.equipment_item_id
         LEFT JOIN usuarios u ON u.id = m.tecnico_id
+        WHERE m.company_id = %s
         ORDER BY (m.status != 'concluida') DESC, m.data_abertura DESC
-    """)
+    """, (current_user.company_id,))
     manutencoes = cur.fetchall()
 
-    cur.execute("SELECT id, nome, codigo_interno FROM equipment_items ORDER BY nome")
+    cur.execute(
+        "SELECT id, nome, codigo_interno FROM equipment_items WHERE company_id=%s ORDER BY nome",
+        (current_user.company_id,),
+    )
     equipamentos = cur.fetchall()
 
-    cur.execute("SELECT id, username FROM usuarios WHERE role IN ('tecnico', 'estoquista') ORDER BY username")
+    cur.execute(
+        "SELECT id, username FROM usuarios WHERE role IN ('tecnico', 'estoquista') AND company_id=%s ORDER BY username",
+        (current_user.company_id,),
+    )
     tecnicos = cur.fetchall()
 
     cur.close()
@@ -139,7 +159,10 @@ def editar_manutencao(id):
                 data_conclusao_real = dt.date.today().isoformat()
 
             try:
-                cur.execute("SELECT equipment_item_id FROM manutencoes WHERE id=%s", (id,))
+                cur.execute(
+                    "SELECT equipment_item_id FROM manutencoes WHERE id=%s AND company_id=%s",
+                    (id, current_user.company_id),
+                )
                 manutencao_atual = cur.fetchone()
                 if not manutencao_atual:
                     flash("Manutenção não encontrada.", "warning")
@@ -151,10 +174,10 @@ def editar_manutencao(id):
                         tipo=%s, problema=%s, status=%s, tecnico_id=%s,
                         data_conclusao_prevista=%s, data_conclusao_real=%s,
                         pecas_utilizadas=%s, valor=%s, fornecedor=%s
-                    WHERE id=%s
+                    WHERE id=%s AND company_id=%s
                 """, (
                     tipo, problema, status, tecnico_id, data_conclusao_prevista, data_conclusao_real,
-                    pecas_utilizadas, valor, fornecedor, id,
+                    pecas_utilizadas, valor, fornecedor, id, current_user.company_id,
                 ))
 
                 cur.execute("SELECT status FROM equipment_items WHERE id=%s", (equipment_item_id,))
@@ -189,11 +212,14 @@ def editar_manutencao(id):
                ei.nome AS equipamento_nome, ei.codigo_interno
         FROM manutencoes m
         JOIN equipment_items ei ON ei.id = m.equipment_item_id
-        WHERE m.id=%s
-    """, (id,))
+        WHERE m.id=%s AND m.company_id=%s
+    """, (id, current_user.company_id))
     manutencao = cur.fetchone()
 
-    cur.execute("SELECT id, username FROM usuarios WHERE role IN ('tecnico', 'estoquista') ORDER BY username")
+    cur.execute(
+        "SELECT id, username FROM usuarios WHERE role IN ('tecnico', 'estoquista') AND company_id=%s ORDER BY username",
+        (current_user.company_id,),
+    )
     tecnicos = cur.fetchall()
 
     cur.close()

@@ -396,6 +396,16 @@ def editar_locacao(id):
     conn = get_db_connection()
     cur = conn.cursor()
 
+    # Confere posse ANTES de qualquer leitura/escrita -- sem isso, um usuario de
+    # outra empresa podia editar/ver locacao (e ate mexer na assinatura Asaas)
+    # de uma empresa que nao e a dele so adivinhando o id na URL.
+    cur.execute("SELECT id FROM locacoes WHERE id=%s AND company_id=%s", (id, current_user.company_id))
+    if not cur.fetchone():
+        cur.close()
+        conn.close()
+        flash("Locação não encontrada.", "warning")
+        return redirect(url_for("locacoes.listar_locacoes"))
+
     if request.method == "POST":
         data_inicio = request.form["data_inicio"]
         data_fim = request.form.get("data_fim") or None
@@ -406,10 +416,10 @@ def editar_locacao(id):
         try:
             cur.execute("""
                 UPDATE locacoes SET data_inicio=%s, data_fim=%s, valor=%s,
-                frequencia_pagamento=%s, observacoes=%s WHERE id=%s
-            """, (data_inicio, data_fim, valor, frequencia, observacoes, id))
+                frequencia_pagamento=%s, observacoes=%s WHERE id=%s AND company_id=%s
+            """, (data_inicio, data_fim, valor, frequencia, observacoes, id, current_user.company_id))
 
-            cur.execute("SELECT asaas_subscription_id, company_id FROM locacoes WHERE id=%s", (id,))
+            cur.execute("SELECT asaas_subscription_id, company_id FROM locacoes WHERE id=%s AND company_id=%s", (id, current_user.company_id))
             row = cur.fetchone()
             asaas_subscription_id = row["asaas_subscription_id"] if row else None
             locacao_company_id = row["company_id"] if row else current_user.company_id
@@ -453,8 +463,8 @@ def editar_locacao(id):
     cur.execute("""
         SELECT id, cliente_id, moto_id, equipment_item_id, company_id, cancelado,
         data_inicio, data_fim, valor, frequencia_pagamento, observacoes, asaas_subscription_id
-        FROM locacoes WHERE id=%s
-    """, (id,))
+        FROM locacoes WHERE id=%s AND company_id=%s
+    """, (id, current_user.company_id))
     locacao = cur.fetchone()
 
     cur.execute("""
@@ -589,7 +599,7 @@ def cancelar_locacao(id):
             flash("Preencha o checklist de devoluÃ§Ã£o antes de finalizar esta locaÃ§Ã£o.", "warning")
             return redirect(url_for("checklists.novo", locacao_id=id, tipo="devolucao"))
 
-        cur.execute("SELECT asaas_subscription_id, equipment_item_id, company_id FROM locacoes WHERE id=%s", (id,))
+        cur.execute("SELECT asaas_subscription_id, equipment_item_id, company_id FROM locacoes WHERE id=%s AND company_id=%s", (id, current_user.company_id))
         row = cur.fetchone()
         if not row:
             flash("LocaÃ§Ã£o nÃ£o encontrada.", "danger")
@@ -635,7 +645,7 @@ def sincronizar_boletos_manual(id):
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        cur.execute("SELECT asaas_subscription_id, company_id FROM locacoes WHERE id=%s", (id,))
+        cur.execute("SELECT asaas_subscription_id, company_id FROM locacoes WHERE id=%s AND company_id=%s", (id, current_user.company_id))
         row = cur.fetchone()
         if not row or not row["asaas_subscription_id"]:
             flash("Assinatura Asaas nÃ£o vinculada Ã  locaÃ§Ã£o.", "warning")
@@ -703,7 +713,7 @@ def contrato_pdf(locacao_id):
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        cur.execute("SELECT contrato_arquivo FROM locacoes WHERE id = %s", (locacao_id,))
+        cur.execute("SELECT contrato_arquivo FROM locacoes WHERE id = %s AND company_id = %s", (locacao_id, current_user.company_id))
         result = cur.fetchone()
         if not result or not result["contrato_arquivo"]:
             flash("Contrato nÃ£o encontrado.", "warning")
@@ -728,8 +738,8 @@ def recibo_pdf(locacao_id):
         cur.execute("""
             SELECT id, cliente_id, equipment_item_id, company_id, data_inicio,
                    valor, valor_pago, pagamento_status
-            FROM locacoes WHERE id=%s
-        """, (locacao_id,))
+            FROM locacoes WHERE id=%s AND company_id=%s
+        """, (locacao_id, current_user.company_id))
         locacao = cur.fetchone()
         if not locacao:
             flash("LocaÃ§Ã£o nÃ£o encontrada.", "warning")

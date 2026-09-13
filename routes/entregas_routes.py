@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+﻿from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 
 from database import get_db_connection
@@ -118,7 +118,10 @@ def atualizar_status(id):
     conn = get_db_connection()
     cur = conn.cursor()
 
-    cur.execute("SELECT entregador_id FROM entregas WHERE id=%s", (id,))
+    cur.execute(
+        "SELECT entregador_id FROM entregas WHERE id=%s AND company_id=%s",
+        (id, current_user.company_id),
+    )
     entrega = cur.fetchone()
     if not entrega:
         cur.close()
@@ -143,7 +146,10 @@ def atualizar_status(id):
         return redirect(url_for("entregas.listar_entregas"))
 
     try:
-        cur.execute("UPDATE entregas SET status=%s WHERE id=%s", (status, id))
+        cur.execute(
+            "UPDATE entregas SET status=%s WHERE id=%s AND company_id=%s",
+            (status, id, current_user.company_id),
+        )
         conn.commit()
         flash("Status da entrega atualizado!", "success")
     except Exception as e:
