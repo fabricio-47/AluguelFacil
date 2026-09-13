@@ -36,10 +36,12 @@ GERENCIAR_USUARIOS = "gerenciar_usuarios"
 ALTERAR_STATUS_EQUIPAMENTO = "alterar_status_equipamento"  # mudar status pela tela de QR Code — mais estreita que GERENCIAR_EQUIPAMENTOS
 VER_ASSISTENTE = "ver_assistente"  # assistente de IA interno — não concedida a nenhum role específico, só acesso total (gerente/admin_locadora/super_admin)
 
-# super_admin e admin_locadora têm acesso total.
-# gerente também, exceto configurações da conta/assinatura — que ainda não existem
-# como rota no sistema, então por ora o efeito prático é o mesmo.
-ROLES_ACESSO_TOTAL = {"super_admin", "admin_locadora", "gerente"}
+# super_admin e admin_locadora têm acesso total, sempre -- são donos da conta.
+# gerente NÃO tem mais bypass automático (mudou nesta versão): agora é um cargo
+# customizável como os outros, com PERMISSOES_POR_ROLE["gerente"] abaixo dando
+# acesso total por padrão -- o admin da locadora pode restringir pela tela de
+# Usuários/Configurações, do jeito que quiser.
+ROLES_ACESSO_TOTAL = {"super_admin", "admin_locadora"}
 
 PERMISSOES_POR_ROLE = {
     "financeiro": {
@@ -68,7 +70,7 @@ PERMISSOES_POR_ROLE = {
     },
 }
 
-CARGOS_CUSTOMIZAVEIS = ("financeiro", "atendente", "vendedor", "tecnico", "estoquista", "entregador")
+CARGOS_CUSTOMIZAVEIS = ("gerente", "financeiro", "atendente", "vendedor", "tecnico", "estoquista", "entregador")
 
 # Só pra exibição na tela de Configurações — não muda nenhum comportamento
 # de autorização.
@@ -116,6 +118,11 @@ LABEL_PERMISSAO = {
     ALTERAR_STATUS_EQUIPAMENTO: "Mudar status de equipamento (QR Code)",
     VER_ASSISTENTE: "Usar o assistente de IA",
 }
+
+# Gerente comecava com bypass total (ROLES_ACESSO_TOTAL); agora que virou cargo
+# customizavel, grandfathering: comeca com TODAS as permissoes por padrao (mesmo
+# efeito de antes), editavel dai pra frente pela tela de Usuarios/Configuracoes.
+PERMISSOES_POR_ROLE["gerente"] = {perm for _, perms in GRUPOS_PERMISSOES for perm in perms}
 
 _TODAS_PERMISSOES_EM_GRUPOS = {perm for _, perms in GRUPOS_PERMISSOES for perm in perms}
 _TODAS_PERMISSOES_EM_ROLES = {perm for perms in PERMISSOES_POR_ROLE.values() for perm in perms}
