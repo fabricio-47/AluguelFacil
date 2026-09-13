@@ -1,8 +1,19 @@
 import os
 
+_SECRET_KEY = os.getenv("SECRET_KEY")
+if not _SECRET_KEY:
+    if os.getenv("FLASK_ENV") == "development" or os.getenv("ALLOW_DEV_SECRET") == "1":
+        _SECRET_KEY = "dev-secret"
+    else:
+        raise RuntimeError(
+            "SECRET_KEY não configurado. Defina a variável de ambiente SECRET_KEY "
+            "(ex: no Render, em Environment) antes de subir a aplicação — sem isso, "
+            "sessões e cookies assinados ficariam vulneráveis a um valor previsível."
+        )
+
 class Config:
     # Secret da aplicação
-    SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret")
+    SECRET_KEY = _SECRET_KEY
 
     # Uploads (documentos/imagens de motos, contratos, habilitações)
     UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "uploads")
