@@ -35,6 +35,8 @@ VER_USUARIOS = "ver_usuarios"  # gestão de funcionários da própria empresa �
 GERENCIAR_USUARIOS = "gerenciar_usuarios"
 ALTERAR_STATUS_EQUIPAMENTO = "alterar_status_equipamento"  # mudar status pela tela de QR Code — mais estreita que GERENCIAR_EQUIPAMENTOS
 VER_ASSISTENTE = "ver_assistente"  # assistente de IA interno — não concedida a nenhum role específico, só acesso total (gerente/admin_locadora/super_admin)
+VER_SUPORTE = "ver_suporte"  # ver tickets de suporte abertos pelos clientes no portal
+GERENCIAR_SUPORTE = "gerenciar_suporte"  # responder e mudar status de tickets de suporte
 
 # super_admin e admin_locadora têm acesso total, sempre -- são donos da conta.
 # gerente NÃO tem mais bypass automático (mudou nesta versão): agora é um cargo
@@ -52,11 +54,13 @@ PERMISSOES_POR_ROLE = {
         VER_LOCACOES, CRIAR_LOCACAO, VER_CLIENTES, GERENCIAR_CLIENTES, VER_EQUIPAMENTOS,
         VER_ENTREGAS, GERENCIAR_ENTREGAS, VER_MAPA_OPERACIONAL,
         VER_ORCAMENTOS, GERENCIAR_ORCAMENTOS, VER_PIPELINE, GERENCIAR_PIPELINE,
+        VER_SUPORTE, GERENCIAR_SUPORTE,
     },
     "vendedor": {
         VER_LOCACOES, CRIAR_LOCACAO, VER_CLIENTES, GERENCIAR_CLIENTES, VER_EQUIPAMENTOS,
         VER_ENTREGAS, GERENCIAR_ENTREGAS, VER_MAPA_OPERACIONAL,
         VER_ORCAMENTOS, GERENCIAR_ORCAMENTOS, VER_PIPELINE, GERENCIAR_PIPELINE,
+        VER_SUPORTE, GERENCIAR_SUPORTE,
     },
     "tecnico": {
         VER_EQUIPAMENTOS, VER_MANUTENCOES, GERENCIAR_MANUTENCOES, ALTERAR_STATUS_EQUIPAMENTO,
@@ -87,6 +91,7 @@ GRUPOS_PERMISSOES = [
     ("CRM / Pipeline", [VER_PIPELINE, GERENCIAR_PIPELINE]),
     ("Usuários", [VER_USUARIOS, GERENCIAR_USUARIOS]),
     ("Assistente de IA", [VER_ASSISTENTE]),
+    ("Suporte", [VER_SUPORTE, GERENCIAR_SUPORTE]),
 ]
 
 LABEL_PERMISSAO = {
@@ -117,6 +122,8 @@ LABEL_PERMISSAO = {
     GERENCIAR_USUARIOS: "Cadastrar/editar usuários",
     ALTERAR_STATUS_EQUIPAMENTO: "Mudar status de equipamento (QR Code)",
     VER_ASSISTENTE: "Usar o assistente de IA",
+    VER_SUPORTE: "Ver tickets de suporte",
+    GERENCIAR_SUPORTE: "Responder/fechar tickets de suporte",
 }
 
 # Gerente comecava com bypass total (ROLES_ACESSO_TOTAL); agora que virou cargo
@@ -147,6 +154,7 @@ _ROTA_POR_PERMISSAO = [
     (VER_PIPELINE, "crm.pipeline"),
     (VER_MANUTENCOES, "manutencoes.listar_manutencoes"),
     (VER_DESPESAS, "financeiro.listar_despesas"),
+    (VER_SUPORTE, "suporte.listar_tickets"),
 ]
 
 

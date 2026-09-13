@@ -166,6 +166,11 @@
           <i class="fa-solid fa-robot me-2"></i>Assistente
         </a>
       </li>
+      <li class="nav-item">
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('suporte.') %}active{% endif %}" href="{{ url_for('suporte.listar_tickets') }}">
+          <i class="fa-solid fa-headset me-2"></i>Suporte
+        </a>
+      </li>
     </ul>
 
     <hr class="text-secondary mx-2">

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Suporte — Ticket #{{ ticket.id }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h2 class="mb-0">{{ ticket.assunto }}</h2>
+    <small class="text-muted">{{ cliente.nome }} ({{ cliente.email }}) — aberto em {{ ticket.created_at.strftime('%d/%m/%Y %H:%M') if ticket.created_at else '–' }}</small>
+  </div>
+  <div>
+    {% if ticket.status == 'aberto' %}<span class="badge bg-danger">Aberto</span>
+    {% elif ticket.status == 'respondido' %}<span class="badge bg-info text-dark">Respondido</span>
+    {% else %}<span class="badge bg-secondary">Fechado</span>{% endif %}
+  </div>
+</div>
+
+<a href="{{ url_for('suporte.listar_tickets') }}" class="btn btn-sm btn-outline-secondary mb-3">
+  <i class="fa-solid fa-arrow-left me-1"></i> Voltar
+</a>
+
+<div class="card mb-3">
+  <div class="card-body" style="max-height: 500px; overflow-y: auto;">
+    {% for m in mensagens %}
+    <div class="mb-3 {{ 'text-end' if m.autor_tipo == 'funcionario' else '' }}">
+      <div class="d-inline-block p-2 rounded {{ 'bg-primary text-white' if m.autor_tipo == 'funcionario' else 'bg-light' }}" style="max-width: 80%;">
+        <div class="small fw-bold">{{ m.autor_nome or (m.autor_tipo|capitalize) }}</div>
+        <div>{{ m.mensagem }}</div>
+        <div class="small {{ 'text-white-50' if m.autor_tipo == 'funcionario' else 'text-muted' }}">{{ m.created_at.strftime('%d/%m/%Y %H:%M') if m.created_at else '' }}</div>
+      </div>
+    </div>
+    {% else %}
+    <p class="text-muted mb-0">Nenhuma mensagem ainda.</p>
+    {% endfor %}
+  </div>
+</div>
+
+{% if ticket.status != 'fechado' %}
+<div class="card mb-3">
+  <div class="card-body">
+    <form method="post" action="{{ url_for('suporte.ver_ticket', ticket_id=ticket.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="acao" value="responder">
+      <textarea name="mensagem" class="form-control mb-2" rows="3" placeholder="Digite sua resposta..." required></textarea>
+      <button type="submit" class="btn btn-primary">
+        <i class="fa-solid fa-paper-plane me-1"></i> Responder
+      </button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<form method="post" action="{{ url_for('suporte.ver_ticket', ticket_id=ticket.id) }}" class="d-inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  {% if ticket.status != 'fechado' %}
+  <input type="hidden" name="acao" value="fechar">
+  <button type="submit" class="btn btn-outline-secondary">Fechar ticket</button>
+  {% else %}
+  <input type="hidden" name="acao" value="reabrir">
+  <button type="submit" class="btn btn-outline-warning">Reabrir ticket</button>
+  {% endif %}
+</form>
+{% endblock %}

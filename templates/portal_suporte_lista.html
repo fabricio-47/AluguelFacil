@@ -1,0 +1,51 @@
+{% extends "base_portal.html" %}
+{% block title %}Meus Chamados{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2 class="mb-0">Meus Chamados</h2>
+  <a href="{{ url_for('portal.suporte_novo') }}" class="btn btn-primary">
+    <i class="fa-solid fa-plus me-1"></i> Novo chamado
+  </a>
+</div>
+
+<a href="{{ url_for('portal.dashboard') }}" class="btn btn-sm btn-outline-secondary mb-3">
+  <i class="fa-solid fa-arrow-left me-1"></i> Voltar
+</a>
+
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-striped mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Assunto</th>
+            <th>Status</th>
+            <th>Atualizado em</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in tickets %}
+          <tr>
+            <td>{{ t.assunto }}</td>
+            <td>
+              {% if t.status == 'aberto' %}<span class="badge bg-warning text-dark">Aguardando resposta</span>
+              {% elif t.status == 'respondido' %}<span class="badge bg-info text-dark">Respondido</span>
+              {% else %}<span class="badge bg-secondary">Fechado</span>{% endif %}
+            </td>
+            <td>{{ t.updated_at.strftime('%d/%m/%Y %H:%M') if t.updated_at else '–' }}</td>
+            <td>
+              <a href="{{ url_for('portal.suporte_ver', ticket_id=t.id) }}" class="btn btn-sm btn-outline-primary">Abrir</a>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="4" class="text-center text-muted">Você ainda não abriu nenhum chamado.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

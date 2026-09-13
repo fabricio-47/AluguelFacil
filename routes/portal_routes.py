@@ -166,3 +166,115 @@ def contrato_pdf(locacao_id):
     finally:
         cur.close()
         conn.close()
+
+
+# ==== Suporte: lista de tickets do cliente logado ====
+@portal_bp.route("/suporte")
+@requer_login_cliente
+def suporte_lista():
+    cliente = cliente_atual()
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute(
+            "SELECT id, assunto, status, created_at, updated_at FROM suporte_tickets "
+            "WHERE cliente_id=%s ORDER BY updated_at DESC",
+            (cliente["id"],),
+        )
+        tickets = cur.fetchall()
+    finally:
+        cur.close()
+        conn.close()
+
+    return render_template("portal_suporte_lista.html", tickets=tickets)
+
+
+# ==== Suporte: abrir novo ticket ====
+@portal_bp.route("/suporte/novo", methods=["GET", "POST"])
+@requer_login_cliente
+def suporte_novo():
+    cliente = cliente_atual()
+
+    if request.method == "POST":
+        assunto = (request.form.get("assunto") or "").strip()
+        mensagem = (request.form.get("mensagem") or "").strip()
+
+        if not assunto or not mensagem:
+            flash("Preencha o assunto e a mensagem.", "warning")
+            return redirect(url_for("portal.suporte_novo"))
+
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        try:
+            cur.execute(
+                "INSERT INTO suporte_tickets (company_id, cliente_id, assunto, status) "
+                "VALUES (%s, %s, %s, 'aberto') RETURNING id",
+                (cliente["company_id"], cliente["id"], assunto),
+            )
+            ticket_id = cur.fetchone()["id"]
+            cur.execute(
+                "INSERT INTO suporte_mensagens (ticket_id, autor_tipo, autor_cliente_id, mensagem) "
+                "VALUES (%s, 'cliente', %s, %s)",
+                (ticket_id, cliente["id"], mensagem),
+            )
+            conn.commit()
+            flash("Chamado aberto! A locadora vai te responder por aqui em breve.", "success")
+            return redirect(url_for("portal.suporte_ver", ticket_id=ticket_id))
+        finally:
+            cur.close()
+            conn.close()
+
+    return render_template("portal_suporte_novo.html")
+
+
+# ==== Suporte: ver/responder um ticket (só se for do próprio cliente) ====
+@portal_bp.route("/suporte/<int:ticket_id>", methods=["GET", "POST"])
+@requer_login_cliente
+def suporte_ver(ticket_id):
+    cliente = cliente_atual()
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute(
+            "SELECT id, assunto, status, created_at FROM suporte_tickets WHERE id=%s AND cliente_id=%s",
+            (ticket_id, cliente["id"]),
+        )
+        ticket = cur.fetchone()
+        if not ticket:
+            flash("Chamado não encontrado.", "warning")
+            return redirect(url_for("portal.suporte_lista"))
+
+        if request.method == "POST":
+            if ticket["status"] == "fechado":
+                flash("Esse chamado já está fechado. Abra um novo se precisar de mais ajuda.", "warning")
+                return redirect(url_for("portal.suporte_ver", ticket_id=ticket_id))
+
+            mensagem = (request.form.get("mensagem") or "").strip()
+            if mensagem:
+                cur.execute(
+                    "INSERT INTO suporte_mensagens (ticket_id, autor_tipo, autor_cliente_id, mensagem) "
+                    "VALUES (%s, 'cliente', %s, %s)",
+                    (ticket_id, cliente["id"], mensagem),
+                )
+                cur.execute(
+                    "UPDATE suporte_tickets SET status='aberto', updated_at=NOW() WHERE id=%s",
+                    (ticket_id,),
+                )
+                conn.commit()
+            return redirect(url_for("portal.suporte_ver", ticket_id=ticket_id))
+
+        cur.execute(
+            """
+            SELECT autor_tipo, mensagem, created_at
+            FROM suporte_mensagens
+            WHERE ticket_id = %s
+            ORDER BY created_at ASC
+            """,
+            (ticket_id,),
+        )
+        mensagens = cur.fetchall()
+    finally:
+        cur.close()
+        conn.close()
+
+    return render_template("portal_suporte_detalhe.html", ticket=ticket, mensagens=mensagens)

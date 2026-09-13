@@ -1,0 +1,28 @@
+{% extends "base_portal.html" %}
+{% block title %}Novo Chamado{% endblock %}
+{% block content %}
+<h2 class="mb-4">Abrir novo chamado</h2>
+
+<a href="{{ url_for('portal.suporte_lista') }}" class="btn btn-sm btn-outline-secondary mb-3">
+  <i class="fa-solid fa-arrow-left me-1"></i> Voltar
+</a>
+
+<div class="card">
+  <div class="card-body">
+    <form method="post" action="{{ url_for('portal.suporte_novo') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="mb-3">
+        <label class="form-label">Assunto</label>
+        <input type="text" name="assunto" class="form-control" maxlength="200" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Mensagem</label>
+        <textarea name="mensagem" class="form-control" rows="5" required></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary">
+        <i class="fa-solid fa-paper-plane me-1"></i> Enviar
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

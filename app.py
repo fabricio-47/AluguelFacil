@@ -27,6 +27,7 @@ from routes.admin_plataforma_routes import admin_plataforma_bp
 from routes.assinaturas_routes import assinaturas_bp
 from routes.assistente_routes import assistente_bp
 from routes.configuracoes_routes import configuracoes_bp
+from routes.suporte_routes import suporte_bp
 
 # Inicialização
 app = Flask(__name__)
@@ -66,6 +67,7 @@ app.register_blueprint(servicos_bp)
 app.register_blueprint(webhook_bp)
 csrf.exempt(webhook_bp)  # chamado pelo Asaas (servidor-a-servidor), sem sessao/csrf token
 app.register_blueprint(orcamentos_bp)
+app.register_blueprint(suporte_bp)
 app.register_blueprint(crm_bp)
 app.register_blueprint(catalogo_bp)
 app.register_blueprint(portal_bp)

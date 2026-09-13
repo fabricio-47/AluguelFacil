@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Suporte{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>Suporte aos Clientes</h2>
+</div>
+
+<ul class="nav nav-pills mb-3">
+  <li class="nav-item">
+    <a class="nav-link {{ 'active' if status_filtro == 'aberto' else '' }}" href="{{ url_for('suporte.listar_tickets', status='aberto') }}">Abertos</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {{ 'active' if status_filtro == 'respondido' else '' }}" href="{{ url_for('suporte.listar_tickets', status='respondido') }}">Respondidos</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {{ 'active' if status_filtro == 'fechado' else '' }}" href="{{ url_for('suporte.listar_tickets', status='fechado') }}">Fechados</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {{ 'active' if status_filtro == 'todos' else '' }}" href="{{ url_for('suporte.listar_tickets', status='todos') }}">Todos</a>
+  </li>
+</ul>
+
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-striped mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Cliente</th>
+            <th>Assunto</th>
+            <th>Status</th>
+            <th>Atualizado em</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in tickets %}
+          <tr>
+            <td>{{ t.cliente_nome }}</td>
+            <td>{{ t.assunto }}</td>
+            <td>
+              {% if t.status == 'aberto' %}<span class="badge bg-danger">Aberto</span>
+              {% elif t.status == 'respondido' %}<span class="badge bg-info text-dark">Respondido</span>
+              {% else %}<span class="badge bg-secondary">Fechado</span>{% endif %}
+            </td>
+            <td>{{ t.updated_at.strftime('%d/%m/%Y %H:%M') if t.updated_at else '–' }}</td>
+            <td>
+              <a href="{{ url_for('suporte.ver_ticket', ticket_id=t.id) }}" class="btn btn-sm btn-outline-primary">Abrir</a>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="5" class="text-center text-muted">Nenhum chamado encontrado.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
