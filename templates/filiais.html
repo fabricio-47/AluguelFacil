@@ -11,6 +11,7 @@
   </div>
   <div class="card-body">
     <form method="post" action="{{ url_for('filiais.listar_filiais') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="row g-2">
         <div class="col-md-4">
           <input type="text" name="nome" placeholder="Nome da filial" class="form-control" required>

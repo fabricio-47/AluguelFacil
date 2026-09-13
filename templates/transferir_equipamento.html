@@ -17,6 +17,7 @@
     <p><strong>Filial atual:</strong> {{ equipamento.filial_atual_nome or 'Sem filial' }}</p>
 
     <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="mb-3">
         <label class="form-label">Nova filial *</label>
         <select name="branch_id" class="form-select" required>

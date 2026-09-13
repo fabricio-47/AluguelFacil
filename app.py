@@ -1,5 +1,6 @@
 from flask import Flask
 from flask_login import LoginManager
+from flask_wtf import CSRFProtect
 import os
 
 from config import Config
@@ -31,6 +32,9 @@ from routes.configuracoes_routes import configuracoes_bp
 app = Flask(__name__)
 app.config.from_object(Config)
 
+# Proteção CSRF em todos os formulários (POST/PUT/PATCH/DELETE)
+csrf = CSRFProtect(app)
+
 # Flask-Login
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -60,6 +64,7 @@ app.register_blueprint(operacional_bp)
 app.register_blueprint(relatorios_bp)
 app.register_blueprint(servicos_bp)
 app.register_blueprint(webhook_bp)
+csrf.exempt(webhook_bp)  # chamado pelo Asaas (servidor-a-servidor), sem sessao/csrf token
 app.register_blueprint(orcamentos_bp)
 app.register_blueprint(crm_bp)
 app.register_blueprint(catalogo_bp)

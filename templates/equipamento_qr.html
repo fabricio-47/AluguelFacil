@@ -24,6 +24,7 @@
       <div class="card-header bg-dark text-white"><i class="fa-solid fa-pen me-1"></i> Mudar status agora</div>
       <div class="card-body">
         <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="input-group">
             <select name="status" class="form-select">
               {% for s in status_editaveis %}

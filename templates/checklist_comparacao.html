@@ -63,6 +63,7 @@
             {% endfor %}
           </div>
           <form method="post" action="{{ url_for('checklists.upload_fotos', checklist_id=checklist.id) }}" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="input-group">
               <input type="file" name="fotos" class="form-control" accept=".jpg,.jpeg,.png" multiple>
               <button class="btn btn-outline-primary" type="submit">Anexar</button>

@@ -15,6 +15,7 @@
   </div>
   <div class="card-body">
     <form method="POST" class="row g-2">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="col-md-5">
         <label class="form-label visually-hidden">Descrição</label>
         <input type="text" class="form-control" name="descricao" placeholder="Descrição" required>
@@ -78,6 +79,7 @@
                 <form method="POST"
                       action="{{ url_for('servicos.excluir_servico_locacao', locacao_id=locacao.id, servico_id=(s.id if s.id is defined else s['id'])) }}"
                       onsubmit="return confirm('Remover este serviço?')">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <button type="submit" class="btn btn-sm btn-danger w-100">
                     <i class="fa-solid fa-trash me-1"></i> Remover
                   </button>

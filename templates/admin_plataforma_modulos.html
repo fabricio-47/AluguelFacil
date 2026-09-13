@@ -52,12 +52,15 @@
             <td>
               <div class="d-flex gap-1">
                 <form method="post" action="{{ url_for('admin_plataforma.ativar_modulo_empresa', id=empresa.id, slug=m.slug) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <button type="submit" class="btn btn-sm btn-success" {% if m.status == 'ativo' %}disabled{% endif %}>Ativar</button>
                 </form>
                 <form method="post" action="{{ url_for('admin_plataforma.trial_modulo_empresa', id=empresa.id, slug=m.slug) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <button type="submit" class="btn btn-sm btn-warning">Trial 7d</button>
                 </form>
                 <form method="post" action="{{ url_for('admin_plataforma.bloquear_modulo_empresa', id=empresa.id, slug=m.slug) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <button type="submit" class="btn btn-sm btn-outline-danger" {% if m.status in ('bloqueado', 'nao_contratado') %}disabled{% endif %}>Bloquear</button>
                 </form>
               </div>

@@ -11,6 +11,7 @@
 <div class="card">
   <div class="card-body">
     <form method="post" action="{{ url_for('admin_plataforma.nova_empresa') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <h5>Dados da empresa</h5>
       <div class="row g-2 mb-4">
         <div class="col-md-6">

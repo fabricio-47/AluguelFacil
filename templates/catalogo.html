@@ -48,6 +48,7 @@
     <div class="modal-dialog">
       <div class="modal-content">
         <form method="post" action="{{ url_for('catalogo.solicitar_locacao', slug=company.slug) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="modal-header">
             <h5 class="modal-title">Solicitar: {{ e.nome }}</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>

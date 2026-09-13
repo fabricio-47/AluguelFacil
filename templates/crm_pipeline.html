@@ -33,6 +33,7 @@
 
             {% if pode_gerenciar %}
             <form method="post" action="{{ url_for('crm.mover_etapa', cliente_id=cliente.cliente_id) }}" class="d-flex gap-1 mt-1">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <select name="etapa" class="form-select form-select-sm">
                 {% for e in etapas %}
                 <option value="{{ e }}" {% if e == etapa %}selected{% endif %}>{{ etapas_label[e] }}</option>

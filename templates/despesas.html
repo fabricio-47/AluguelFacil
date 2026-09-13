@@ -19,6 +19,7 @@
   </div>
   <div class="card-body">
     <form method="post" action="{{ url_for('financeiro.listar_despesas') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="row g-2">
         <div class="col-md-4">
           <label class="form-label">Descrição *</label>
@@ -110,6 +111,7 @@
                 <i class="fa fa-edit"></i>
               </a>
               <form action="{{ url_for('financeiro.excluir_despesa', id=despesa.id) }}" method="post" style="display:inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza que deseja excluir esta despesa?')">
                   <i class="fa fa-trash"></i>
                 </button>

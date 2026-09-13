@@ -12,6 +12,7 @@
   </div>
   <div class="card-body">
     <form method="post" action="{{ url_for('entregas.listar_entregas') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="row g-2">
         <div class="col-md-3">
           <label class="form-label">Locação</label>
@@ -88,6 +89,7 @@
             <td>{{ e.horario_previsto or '–' }}</td>
             <td>
               <form method="post" action="{{ url_for('entregas.atualizar_status', id=e.id) }}" class="d-flex gap-1">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <select name="status" class="form-select form-select-sm">
                   {% for st in status_opcoes %}
                   <option value="{{ st }}" {% if e.status == st %}selected{% endif %}>{{ st }}</option>

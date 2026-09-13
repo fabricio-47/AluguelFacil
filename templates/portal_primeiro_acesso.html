@@ -8,6 +8,7 @@
         <h4 class="mb-3">Primeiro acesso</h4>
         <p class="text-muted small">Confirme seu e-mail e CPF ou telefone já cadastrados pra criar sua senha.</p>
         <form method="post" action="{{ url_for('portal.primeiro_acesso') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="mb-3">
             <label class="form-label">E-mail cadastrado</label>
             <input type="email" name="email" class="form-control" required>

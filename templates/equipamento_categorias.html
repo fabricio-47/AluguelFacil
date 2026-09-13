@@ -12,6 +12,7 @@
   </div>
   <div class="card-body">
     <form method="post" class="row g-2 align-items-end">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="col-md-5">
         <label class="form-label">Nome *</label>
         <input type="text" name="nome" class="form-control" required placeholder="Ex: Carros, Apartamentos, Motos">
@@ -50,7 +51,8 @@
         <tbody>
           {% for c in categorias %}
           <tr>
-            <form method="post" action="{{ url_for('equipamentos.editar_categoria', id=c.id) }}" class="d-none" id="form-editar-{{ c.id }}"></form>
+            <form method="post" action="{{ url_for('equipamentos.editar_categoria', id=c.id) }}" class="d-none" id="form-editar-{{ c.id }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"></form>
             <td>
               <input type="text" name="nome" form="form-editar-{{ c.id }}" class="form-control form-control-sm" value="{{ c.nome }}" required>
             </td>
@@ -67,6 +69,7 @@
               <div class="d-flex gap-1">
                 <button type="submit" form="form-editar-{{ c.id }}" class="btn btn-sm btn-outline-primary">Salvar</button>
                 <form method="post" action="{{ url_for('equipamentos.excluir_categoria', id=c.id) }}" onsubmit="return confirm('Excluir esta categoria?');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <button type="submit" class="btn btn-sm btn-outline-danger" {% if c.itens_usando > 0 %}disabled title="Tem itens usando essa categoria"{% endif %}>Excluir</button>
                 </form>
               </div>

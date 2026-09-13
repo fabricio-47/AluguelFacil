@@ -20,6 +20,7 @@
         {% endwith %}
 
         <form method="post" action="{{ url_for('auth.resetar_senha', token=token) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="mb-3">
             <label class="form-label">Nova Senha</label>
             <input type="password" name="nova_senha" class="form-control" minlength="8" required>

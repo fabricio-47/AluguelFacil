@@ -15,6 +15,7 @@
   </div>
   <div class="card-body">
     <form method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="row g-3">
         <div class="col-md-4">
           <label for="cliente_id" class="form-label">Cliente</label>
@@ -238,6 +239,7 @@ document.querySelector("#btn-cadastrar-locacao").closest("form").addEventListene
                   <i class="fa-solid fa-edit"></i>
                 </a>
                 <form action="{{ url_for('locacoes.cancelar_locacao', id=locacao.id) }}" method="POST" style="display:inline;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <button type="submit" class="btn btn-sm btn-danger"
                           onclick="return confirm('Tem certeza que deseja cancelar esta locação?')" title="Cancelar">
                     <i class="fa-solid fa-ban"></i>

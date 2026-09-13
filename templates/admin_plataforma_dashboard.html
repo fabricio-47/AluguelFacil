@@ -76,6 +76,7 @@
             <td>
               <div class="d-flex flex-column gap-1">
                 <form method="post" action="{{ url_for('admin_plataforma.mudar_status_empresa', id=e.id) }}" class="d-flex gap-1">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <select name="status" class="form-select form-select-sm">
                     {% for s in status_opcoes %}
                     <option value="{{ s }}" {% if s == e.status %}selected{% endif %}>{{ s }}</option>
@@ -85,6 +86,7 @@
                 </form>
 
                 <form method="post" action="{{ url_for('admin_plataforma.mudar_plano_empresa', id=e.id) }}" class="d-flex gap-1">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <select name="plano" class="form-select form-select-sm">
                     {% for p in planos %}
                     <option value="{{ p }}" {% if p == e.plano %}selected{% endif %}>{{ p }}</option>
@@ -98,10 +100,12 @@
 
                 <div class="d-flex gap-1">
                   <form method="post" action="{{ url_for('admin_plataforma.periodo_gratis_empresa', id=e.id) }}" class="d-flex gap-1">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="number" name="dias" class="form-control form-control-sm" placeholder="dias grátis" value="30" style="max-width:110px;">
                     <button type="submit" class="btn btn-sm btn-outline-info">Período Grátis</button>
                   </form>
                   <form method="post" action="{{ url_for('admin_plataforma.confirmar_pagamento_empresa', id=e.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-sm btn-outline-success">Confirmar Pagamento</button>
                   </form>
                   <a href="{{ url_for('admin_plataforma.empresa_modulos', id=e.id) }}" class="btn btn-sm btn-outline-dark">Módulos</a>

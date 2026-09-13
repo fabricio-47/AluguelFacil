@@ -29,24 +29,28 @@
     <div class="d-flex gap-2 flex-wrap">
       {% if orcamento.status == 'criado' %}
       <form method="post" action="{{ url_for('orcamentos.mudar_status_orcamento', id=orcamento.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="status" value="enviado">
         <button type="submit" class="btn btn-outline-primary btn-sm">Marcar como enviado</button>
       </form>
       {% endif %}
       {% if orcamento.status in ('enviado',) %}
       <form method="post" action="{{ url_for('orcamentos.mudar_status_orcamento', id=orcamento.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="status" value="visualizado">
         <button type="submit" class="btn btn-outline-primary btn-sm">Marcar como visualizado</button>
       </form>
       {% endif %}
       {% if orcamento.status in ('criado', 'enviado', 'visualizado') %}
       <form method="post" action="{{ url_for('orcamentos.mudar_status_orcamento', id=orcamento.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="status" value="recusado">
         <button type="submit" class="btn btn-outline-danger btn-sm">Marcar como recusado</button>
       </form>
       {% endif %}
       {% if orcamento.status != 'recusado' %}
       <form method="post" action="{{ url_for('orcamentos.converter_orcamento', id=orcamento.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn btn-success btn-sm">
           <i class="fa-solid fa-check me-1"></i> Aprovar e Converter em Locação
         </button>

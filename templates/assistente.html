@@ -4,6 +4,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
   <h2><i class="fa-solid fa-robot me-1"></i> Assistente</h2>
   <form method="post" action="{{ url_for('assistente.limpar_historico') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button type="submit" class="btn btn-outline-secondary btn-sm">
       <i class="fa-solid fa-broom me-1"></i> Limpar conversa
     </button>
@@ -32,6 +33,7 @@
 </div>
 
 <form method="post" action="{{ url_for('assistente.fazer_pergunta') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="input-group">
     <input type="text" name="pergunta" class="form-control" placeholder="Pergunte alguma coisa..." required autofocus>
     <button type="submit" class="btn btn-primary">

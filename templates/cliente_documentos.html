@@ -22,6 +22,7 @@
   </div>
   <div class="card-body">
     <form method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="row g-3 align-items-end">
         <div class="col-md-3">
           <label for="tipo" class="form-label">Tipo do documento</label>
@@ -80,6 +81,7 @@
             <form method="POST"
                   action="{{ url_for('clientes.excluir_documento_extra', cliente_id=cliente.id, doc_id=doc.id) }}"
                   onsubmit="return confirm('Tem certeza que deseja excluir este documento?')">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn-sm btn-danger">
                 <i class="fa-solid fa-trash me-1"></i> Excluir
               </button>

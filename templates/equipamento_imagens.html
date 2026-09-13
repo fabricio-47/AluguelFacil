@@ -29,6 +29,7 @@
   </div>
   <div class="card-body">
     <form method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="row g-3 align-items-center">
         <div class="col-md-8">
           <div class="d-flex align-items-center gap-2 mb-1">
@@ -65,6 +66,7 @@
             <form method="POST"
                   action="{{ url_for('equipamentos.excluir_imagem_equipamento', equipamento_id=equipamento.id, img_id=(img.id if img.id is defined else img['id'])) }}"
                   onsubmit="return confirm('Tem certeza que deseja excluir esta imagem?')">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn-sm btn-danger">
                 <i class="fa-solid fa-trash me-1"></i> Excluir
               </button>
