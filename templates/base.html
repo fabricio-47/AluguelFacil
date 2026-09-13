@@ -199,7 +199,10 @@
       <button class="btn btn-outline-light btn-sm" type="button" id="sidebarOpenBtn">
         <i class="fa-solid fa-bars"></i>
       </button>
-      <span class="navbar-brand text-white ms-3 mb-0">AluguelFácil</span>
+      <span class="navbar-brand text-white ms-3 mb-0 d-flex flex-column lh-sm">
+        <span class="fw-bold">{% block topbar_titulo %}{{ self.title() }}{% endblock %}</span>
+        <small class="text-white-50" style="font-size:0.7rem;">AluguelFácil</small>
+      </span>
     </div>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
