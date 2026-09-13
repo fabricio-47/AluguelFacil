@@ -1,0 +1,13 @@
+name: Rodar migracao 028 permissoes usuario (temporario)
+on: workflow_dispatch
+jobs:
+  migrar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar dependencias
+        run: pip install psycopg2-binary
+      - name: Rodar migracao (apply)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_BACKUP }}
+        run: python3 migrate_permissoes_usuario.py --apply
