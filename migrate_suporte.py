@@ -1,7 +1,14 @@
+"""Migracao 027: sistema de suporte (tickets/mensagens) entre clientes do portal e a equipe.
+
+Uso:
+    python3 migrate_suporte.py            # dry-run
+    python3 migrate_suporte.py --apply    # aplica de verdade
+"""
 import argparse
+import os
+
 import psycopg2
-from psycopg2.extras import RealDictCursor
-from config import Config
+import psycopg2.extras
 
 
 def main():
@@ -9,7 +16,11 @@ def main():
     parser.add_argument("--apply", action="store_true", help="Aplica de verdade (default é dry-run com rollback)")
     args = parser.parse_args()
 
-    conn = psycopg2.connect(Config.DATABASE_URL, sslmode=Config.DB_SSLMODE, cursor_factory=RealDictCursor)
+    database_url = os.environ.get("DATABASE_URL")
+    if not database_url:
+        raise SystemExit("DATABASE_URL não definido no ambiente.")
+
+    conn = psycopg2.connect(database_url, sslmode="require", cursor_factory=psycopg2.extras.RealDictCursor)
     cur = conn.cursor()
     try:
         with open("migrations/027_suporte.sql", encoding="utf-8") as f:
